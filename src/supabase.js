@@ -48,16 +48,14 @@ export const authSignUp = async (email, password, userData) => {
     if (data.user) {
       const { error: profileError } = await supabase
         .from('profiles')
-        .insert([
-          {
-            id: data.user.id,
-            name: userData.name,
-            email: email,
-            phone: userData.phone,
-            digital_id: userData.digitalId,
-            role: 'tourist',
-          },
-        ]);
+        .upsert({
+          id: data.user.id,
+          name: userData.name,
+          email: email,
+          phone: userData.phone,
+          digital_id: userData.digitalId,
+          role: 'tourist',
+        });
 
       if (profileError) throw profileError;
     }
