@@ -126,18 +126,22 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
 
   const findNearbyPOIs = async (type) => {
     const amenity = type === 'Hospitals' ? 'hospital' : type === 'Police' ? 'police' : (type === 'Museums' ? 'museum' : 'park');
-    const query = `[out:json];node["amenity"="${amenity}"](around:5000,${currentPosition[0]},${currentPosition[1]});out;`;
+    const query = `[out:json];nwr["amenity"="${amenity}"](around:5000,${currentPosition[0]},${currentPosition[1]});out center;`;
     
     try {
       const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
       const data = await res.json();
       if (data.elements) {
-        const sortedPois = data.elements.map(e => ({
-          id: e.id,
-          pos: [e.lat, e.lon],
-          name: e.tags?.name || `${type} Station`,
-          distance: getDistance(currentPosition[0], currentPosition[1], e.lat, e.lon)
-        })).sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance)).slice(0, 5);
+        const sortedPois = data.elements.map(e => {
+          const lat = e.lat || e.center?.lat;
+          const lon = e.lon || e.center?.lon;
+          return {
+            id: e.id,
+            pos: [lat, lon],
+            name: e.tags?.name || `${type} Station`,
+            distance: getDistance(currentPosition[0], currentPosition[1], lat, lon)
+          };
+        }).filter(e => e.pos[0] && e.pos[1]).sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance)).slice(0, 5);
         setNearbyPOIs(sortedPois);
       }
     } catch (err) { console.error("POI Error:", err); }

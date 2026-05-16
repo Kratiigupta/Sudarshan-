@@ -56,9 +56,15 @@ function App() {
   }, [appSettings]);
 
   const [activeView, setActiveView] = useState(() => {
+    const savedView = localStorage.getItem('sudarshan_last_view');
+    if (savedView) return savedView;
     const role = localStorage.getItem('sudarshan_role');
     return role === 'police' ? 'police' : 'tourist';
   });
+
+  useEffect(() => {
+    localStorage.setItem('sudarshan_last_view', activeView);
+  }, [activeView]);
 
   const [showSosModal, setShowSosModal] = useState(false);
   const [showSosTargetModal, setShowSosTargetModal] = useState(false);
@@ -91,20 +97,10 @@ function App() {
   const [disasters, setDisasters] = useState([]);
   const [poiType, setPoiType] = useState(null);
 
-  // Fetch Location
+  // Fetch Location logic merged into WatchPosition below to prevent duplicate prompts
   useEffect(() => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude });
-        }, 
-        (err) => {
-          console.warn("Geolocation error, using fallback:", err);
-          setLocation({ lat: 28.6139, lon: 77.2090 }); // Fallback to New Delhi
-        },
-        { timeout: 10000 }
-      );
-    } else {
+    // Only set fallback if not supported
+    if (!("geolocation" in navigator)) {
       setLocation({ lat: 28.6139, lon: 77.2090 });
     }
   }, []);
@@ -131,6 +127,17 @@ function App() {
           status: 'open',
           station: 'Central Command HQ',
         }).catch(console.error);
+        // Simulate sending SMS/Email to Emergency Contacts
+        const contactsRaw = localStorage.getItem(`sudarshan_contacts_${userProfile?.supabaseId}`);
+        if (contactsRaw) {
+           const contacts = JSON.parse(contactsRaw);
+           if (contacts.length > 0) {
+              console.log(`[SIMULATION] Sent LOW BATTERY Email/SMS with Live Location to:`, contacts);
+              alert(`⚠️ Device battery critically low. Live location sent to ${contacts.length} emergency contacts!`);
+           }
+        }
+        setShowSosSuccess(true);
+        setTimeout(() => setShowSosSuccess(false), 5000);
       }
       if (level > 20) setBatteryAlertSent(false);
     };

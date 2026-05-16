@@ -21,11 +21,11 @@ export const isSupabaseConfigured = isConfigured;
 // 🔐 Authentication
 // ============================================
 
-export const sendOtpEmail = async (email) => {
+export const sendOtpEmail = async (email, isSignUp = false) => {
   try {
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: false }
+      options: { shouldCreateUser: isSignUp }
     });
     if (error) throw error;
     return { data, error: null };
@@ -80,6 +80,8 @@ export const authSignUp = async (email, password, userData) => {
           name: userData.name,
           email: email,
           phone: userData.phone,
+          dob: userData.dob || null,
+          address: userData.address || null,
           digital_id: userData.digitalId,
           role: userData.role || 'tourist',
           station: userData.station || null,

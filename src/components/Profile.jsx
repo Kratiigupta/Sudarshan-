@@ -6,6 +6,7 @@ const Profile = ({ user, setUser, isDark, userId }) => {
   const [formData, setFormData] = useState(user);
   const [showSaved, setShowSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Fetch profile from Supabase on mount
   useEffect(() => {
@@ -23,6 +24,7 @@ const Profile = ({ user, setUser, isDark, userId }) => {
           avatar: data.avatar_url || prev.avatar,
         }));
       }
+      setIsInitialLoading(false);
     };
     fetchProfile();
   }, [userId]);
@@ -34,8 +36,11 @@ const Profile = ({ user, setUser, isDark, userId }) => {
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setFormData({ ...formData, avatar: imageUrl });
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, avatar: reader.result });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -51,6 +56,7 @@ const Profile = ({ user, setUser, isDark, userId }) => {
         email: formData.email,
         dob: formData.dob || null,
         address: formData.address || null,
+        avatar_url: formData.avatar || null,
       });
     }
 
@@ -67,7 +73,11 @@ const Profile = ({ user, setUser, isDark, userId }) => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-      
+      {isInitialLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+           <Loader2 size={60} className="animate-spin text-white" />
+        </div>
+      )}
       <div className={`p-6 rounded-3xl shadow-sm border flex justify-between items-center flex-wrap gap-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
         <div className="flex items-center gap-4">
           <div className="relative">

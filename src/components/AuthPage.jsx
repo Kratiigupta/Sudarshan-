@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Shield, User, Lock, Upload, ArrowRight, Building, CheckCircle2, Loader2, Fingerprint, AlertTriangle, Mail, Phone } from 'lucide-react';
-import { authSignIn, authSignUp, sendOtpEmail, verifyOtpEmail } from '../supabase';
+import { authSignIn, authChangePassword, getCurrentUser, updateProfile, sendOtpEmail, verifyOtpEmail } from '../supabase';
 
 const AuthPage = ({ onLogin }) => {
   const [view, setView] = useState('login'); 
@@ -141,7 +141,7 @@ const AuthPage = ({ onLogin }) => {
     }, 200);
 
     // Send Real OTP via Email
-    const { error: otpError } = await sendOtpEmail(formData.email);
+    const { error: otpError } = await sendOtpEmail(formData.email, true);
     setIsUploadingKyc(false);
     
     if (otpError) {
@@ -195,23 +195,28 @@ const AuthPage = ({ onLogin }) => {
         ? 'POLICE-' + Math.floor(Math.random() * 9000 + 1000)
         : 'SU-' + Math.floor(Math.random() * 900000 + 100000);
 
-      // Supabase signup
-      const { data, error: signUpError } = await authSignUp(formData.email, formData.password, {
+      // Set password for the authenticated user
+      const { error: passError } = await authChangePassword(formData.password);
+      if (passError) throw passError;
+
+      // Update profile with all data
+      const { user, error: userError } = await getCurrentUser();
+      if (userError || !user) throw new Error("Could not find authenticated user.");
+
+      const { error: profileError } = await updateProfile(user.id, {
         name: formData.name,
         phone: formData.phone,
-        dob: formData.dob,
-        address: formData.address,
-        digitalId: newId,
+        dob: formData.dob || null,
+        address: formData.address || null,
+        digital_id: newId,
         role: role,
         station: role === 'police' ? formData.station : null,
       });
 
-      if (signUpError) throw signUpError;
+      if (profileError) throw profileError;
 
       setGeneratedId(newId);
-      if (data?.user?.id) {
-        setRegisteredUserId(data.user.id);
-      }
+      setRegisteredUserId(user.id);
       setTimeout(() => {
         setView('success'); 
       }, 2500);
@@ -354,7 +359,7 @@ const AuthPage = ({ onLogin }) => {
               )}
 
               <div className="flex gap-4">
-                <input type="date" placeholder="Date of Birth" value={formData.dob} onChange={(e) => setFormData({...formData, dob: e.target.value})} className="w-1/2 bg-gray-50 border-2 border-gray-200 rounded-xl p-3 focus:border-blue-500 outline-none font-medium text-gray-500" />
+                <input type="date" placeholder="Date of Birth" value={formData.dob} onChange={(e) => setFormData({...formData, dob: e.target.value})} className="w-1/2 bg-gray-50 border-2 border-gray-200 rounded-xl p-3 focus:border-blue-500 outline-none font-bold text-gray-800" />
                 <input type="tel" placeholder="Phone Number" maxLength="10" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g, '')})} className="w-1/2 bg-gray-50 border-2 border-gray-200 rounded-xl p-3 focus:border-blue-500 outline-none font-medium" />
               </div>
               <input type="text" placeholder={role === 'police' ? "Department Address" : "Full Permanent Address"} value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-3 focus:border-blue-500 outline-none font-medium" />
