@@ -5,7 +5,7 @@ import { addEmergencyContact, getEmergencyContacts, deleteEmergencyContact } fro
 const EmergencyContacts = ({ isDark, userId }) => {
   const [contacts, setContacts] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newContact, setNewContact] = useState({ name: '', phone: '', tracking: true });
+  const [newContact, setNewContact] = useState({ name: '', phone: '', email: '', tracking: true });
   const [isLoading, setIsLoading] = useState(false);
 
   // Load contacts from Supabase
@@ -35,6 +35,7 @@ const EmergencyContacts = ({ isDark, userId }) => {
       const { data } = await addEmergencyContact(userId, {
         name: newContact.name,
         phone: newContact.phone,
+        email: newContact.email,
         tracking: newContact.tracking,
       });
       if (data) {
@@ -44,7 +45,7 @@ const EmergencyContacts = ({ isDark, userId }) => {
       setContacts([{ ...newContact, id: Date.now() }, ...contacts]);
     }
     
-    setNewContact({ name: '', phone: '', tracking: true });
+    setNewContact({ name: '', phone: '', email: '', tracking: true });
     setShowAddForm(false);
   };
 
@@ -90,7 +91,10 @@ const EmergencyContacts = ({ isDark, userId }) => {
                     </div>
                     <div>
                       <h4 className={`font-bold text-lg ${isDark ? 'text-white' : 'text-gray-800'}`}>{contact.name}</h4>
-                      <p className={`font-medium flex items-center gap-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}><Phone size={14}/> {contact.phone}</p>
+                      <div className="flex gap-3 mt-1 flex-wrap">
+                        <p className={`text-xs font-bold flex items-center gap-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}><Phone size={12}/> {contact.phone}</p>
+                        {contact.email && <p className={`text-xs font-bold flex items-center gap-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>📧 {contact.email}</p>}
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
@@ -126,6 +130,13 @@ const EmergencyContacts = ({ isDark, userId }) => {
                 <input 
                   type="tel" required placeholder="Phone Number" 
                   value={newContact.phone} onChange={e => setNewContact({...newContact, phone: e.target.value})}
+                  className={`w-full border-2 rounded-xl p-3 focus:border-red-500 outline-none font-medium ${isDark ? 'bg-slate-600 border-slate-500 text-white' : 'border-gray-200'}`} 
+                />
+              </div>
+              <div className="mb-4">
+                <input 
+                  type="email" required placeholder="Email Address (Gmail etc.)" 
+                  value={newContact.email} onChange={e => setNewContact({...newContact, email: e.target.value})}
                   className={`w-full border-2 rounded-xl p-3 focus:border-red-500 outline-none font-medium ${isDark ? 'bg-slate-600 border-slate-500 text-white' : 'border-gray-200'}`} 
                 />
               </div>

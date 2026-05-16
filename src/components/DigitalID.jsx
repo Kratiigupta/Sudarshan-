@@ -1,7 +1,7 @@
 import React from 'react';
 import { Shield, CheckCircle2, User, Calendar, MapPin, Activity, Fingerprint, Lock, ShieldCheck } from 'lucide-react';
 
-const DigitalID = ({ user, isDark }) => {
+const DigitalID = ({ user, isDark, itinerary = {} }) => {
   // Generate a mock blockchain hash based on user ID
   const generateHash = (id) => {
     let str = id + "SUDARSHAN-BLOCKCHAIN-SALT";
@@ -21,7 +21,7 @@ const DigitalID = ({ user, isDark }) => {
       <div className="text-center mb-8">
         <h2 className="text-3xl font-black mb-2 uppercase tracking-widest flex items-center justify-center gap-3">
           <ShieldCheck className="text-blue-500" size={32} />
-          Digital Tourist ID
+          {user?.role === 'police' ? 'Administrator ID' : 'Digital Tourist ID'}
         </h2>
         <p className={`text-sm font-bold opacity-70 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Blockchain Verified & Secured</p>
       </div>
@@ -42,9 +42,6 @@ const DigitalID = ({ user, isDark }) => {
               <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">Sudarshan Pass</p>
               <h3 className="text-2xl font-black">{user?.id || 'SU-PENDING'}</h3>
             </div>
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner ${isDark ? 'bg-slate-800 border border-slate-700' : 'bg-gray-100 border border-gray-200'}`}>
-               <Fingerprint size={28} className="text-blue-500" />
-            </div>
           </div>
 
           {/* User Details Grid */}
@@ -63,7 +60,7 @@ const DigitalID = ({ user, isDark }) => {
             </div>
             <div>
               <p className={`text-[10px] font-black uppercase tracking-wider mb-1 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>Valid Until</p>
-              <p className="font-bold text-sm text-green-500">Trip End Date</p>
+              <p className={`font-bold text-sm ${itinerary.endDate ? 'text-green-500' : 'text-yellow-500'}`}>{itinerary.endDate ? new Date(itinerary.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Set Itinerary'}</p>
             </div>
           </div>
 

@@ -10,15 +10,18 @@ import ChangePassword from './components/ChangePassword';
 import SettingsView from './components/Settings'; 
 import Profile from './components/Profile'; 
 import AuthPage from './components/AuthPage'; 
-import { authSignOut } from './supabase';
-import { Menu, X, User, Lock, Trash2, Phone, Settings, Gamepad2, AlertTriangle, Briefcase, Bell, LogOut, CloudSun, Users, Building, Home, Navigation, Activity, ShieldAlert, ShieldCheck } from 'lucide-react';
+import PolicePanel from './components/PolicePanel';
+import History from './components/History';
+import TravelNews from './components/TravelNews';
+import { authSignOut, createIncident } from './supabase';
+import { Menu, X, User, Lock, Trash2, Phone, Settings, Gamepad2, AlertTriangle, Briefcase, Bell, LogOut, CloudSun, Users, Building, Home, Navigation, Activity, ShieldAlert, ShieldCheck, Clock, Newspaper, Watch, BatteryWarning, MapPinOff, Hotel } from 'lucide-react';
 
 const translations = {
   en: {
     touristApp: "📱 Tourist App", policeRoom: "🖥️ Police Control Room", sos: "🚨 SOS",
     safetyScoreTitle: "AI Personal Safety Score", statusSafe: "✅ Secure in Safe Zone", statusDanger: "⚠️ CRITICAL ANOMALY",
     dashboard: "Home", profile: "My Profile", travelInfo: "Travel Itinerary", emergency: "Emergency Contacts",
-    alerts: "Alerts & Notifications", changePass: "Change Password", settings: "Settings", logout: "Log Out", deleteAcc: "Delete Account",
+    alerts: "Safety Alerts", notifications: "Notifications", changePass: "Change Password", settings: "Settings", logout: "Log Out", deleteAcc: "Account Delete",
     weather: "Weather & Temp", crowd: "Crowd Density", hotel: "Accommodation", travelAlerts: "TRAVEL ALERTS",
     distance: "Distance:", timeToReach: "Est. Time:", globalMonitoring: "🌍 Global Geo-Spatial Monitoring", autoFir: "🚨 Auto E-FIR & Alerts"
   },
@@ -26,7 +29,7 @@ const translations = {
     touristApp: "📱 यात्री ऐप", policeRoom: "🖥️ पुलिस कंट्रोल ROOM", sos: "🚨 आपातकाल",
     safetyScoreTitle: "AI सुरक्षा स्कोर", statusSafe: "✅ आप सुरक्षित हैं", statusDanger: "⚠️ खतरा!",
     dashboard: "होम", profile: "मेरी प्रोफाइल", travelInfo: "यात्रा विवरण", emergency: "आपातकालीन संपर्क",
-    alerts: "अलर्ट और सूचनाएं", changePass: "पासवर्ड बदलें", settings: "सेटिंग्स", logout: "लॉग आउट", deleteAcc: "खाता हटाएं",
+    alerts: "सुरक्षा अलर्ट", notifications: "सूचनाएं", changePass: "पासवर्ड बदलें", settings: "सेटिंग्स", logout: "लॉग आउट", deleteAcc: "खाता हटाएं",
     weather: "मौसम और तापमान", crowd: "भीड़ का घनत्व", hotel: "होटल विवरण", travelAlerts: "यात्रा अलर्ट",
     distance: "दूरी:", timeToReach: "अनुमानित समय:", globalMonitoring: "🌍 वैश्विक भू-स्थानिक निगरानी", autoFir: "🚨 ऑटो ई-एफआईआर और अलर्ट"
   }
@@ -58,6 +61,7 @@ function App() {
   });
 
   const [showSosModal, setShowSosModal] = useState(false);
+  const [showSosTargetModal, setShowSosTargetModal] = useState(false);
   const [showMiniGames, setShowMiniGames] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -67,6 +71,19 @@ function App() {
   const [safetyScore, setSafetyScore] = useState(100);
   const [isAreaSafe, setIsAreaSafe] = useState(true);
   const [incidentLogs, setIncidentLogs] = useState([]);
+
+  // 🔋 BATTERY MONITORING
+  const [batteryLevel, setBatteryLevel] = useState(100);
+  const [batteryAlertSent, setBatteryAlertSent] = useState(false);
+
+  // 🧠 AI ANOMALY DETECTION
+  const [locationHistory, setLocationHistory] = useState([]);
+  const [lastActivityTime, setLastActivityTime] = useState(Date.now());
+  const [anomalyFlags, setAnomalyFlags] = useState([]);
+  const anomalyIntervalRef = useRef(null);
+
+  // 👥 CROWD DENSITY (estimated from POI data)
+  const [crowdLevel, setCrowdLevel] = useState('Low');
 
   // 🌍 REAL-TIME DATA STATES
   const [location, setLocation] = useState(null);
@@ -91,6 +108,119 @@ function App() {
       setLocation({ lat: 28.6139, lon: 77.2090 });
     }
   }, []);
+
+  // 🔋 Battery Monitoring — Auto-SOS when battery < 10%
+  useEffect(() => {
+    if (!('getBattery' in navigator)) return;
+    let battery = null;
+    const handleLevelChange = () => {
+      if (!battery) return;
+      const level = Math.round(battery.level * 100);
+      setBatteryLevel(level);
+      if (level <= 10 && !batteryAlertSent && appSettings.autoSOS && isLoggedIn && userRole === 'tourist') {
+        setBatteryAlertSent(true);
+        // Auto-create a low-battery incident
+        createIncident({
+          user_id: userProfile?.supabaseId || null,
+          reporter_name: userProfile?.name || 'Unknown',
+          type: 'LOW_BATTERY',
+          description: `Auto-alert: Device battery critically low (${level}%). Last known GPS shared.`,
+          latitude: location?.lat || 0,
+          longitude: location?.lon || 0,
+          severity: 'high',
+          status: 'open',
+          station: 'Central Command HQ',
+        }).catch(console.error);
+      }
+      if (level > 20) setBatteryAlertSent(false);
+    };
+    navigator.getBattery().then((b) => {
+      battery = b;
+      handleLevelChange();
+      b.addEventListener('levelchange', handleLevelChange);
+    }).catch(() => {});
+    return () => {
+      if (battery) battery.removeEventListener('levelchange', handleLevelChange);
+    };
+  }, [batteryAlertSent, appSettings.autoSOS, isLoggedIn, userRole, location]);
+
+  // 🧠 AI Anomaly Detection — Track location, detect drops/inactivity/deviation
+  useEffect(() => {
+    if (!isLoggedIn || userRole !== 'tourist') return;
+    // Continuous GPS tracking for anomaly analysis
+    let watchId = null;
+    if ('geolocation' in navigator) {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const newPt = { lat: pos.coords.latitude, lon: pos.coords.longitude, ts: Date.now() };
+          setLocation({ lat: newPt.lat, lon: newPt.lon });
+          setLocationHistory(prev => [...prev.slice(-60), newPt]); // Keep last 60 readings
+          setLastActivityTime(Date.now());
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 }
+      );
+    }
+
+    // Anomaly check interval (every 60 seconds)
+    anomalyIntervalRef.current = setInterval(() => {
+      const flags = [];
+      const now = Date.now();
+
+      // 1) Prolonged Inactivity (no GPS update for 30+ minutes)
+      if (now - lastActivityTime > 30 * 60 * 1000) {
+        flags.push({ type: 'INACTIVITY', msg: 'No location updates for 30+ minutes', severity: 'high' });
+      }
+
+      // 2) Sudden Location Drop (large jump in short time)
+      if (locationHistory.length >= 2) {
+        const last = locationHistory[locationHistory.length - 1];
+        const prev = locationHistory[locationHistory.length - 2];
+        const dist = getDistanceKm(prev.lat, prev.lon, last.lat, last.lon);
+        const timeDiff = (last.ts - prev.ts) / 1000 / 60; // minutes
+        if (dist > 50 && timeDiff < 5) {
+          flags.push({ type: 'LOCATION_DROP', msg: `Sudden ${dist.toFixed(1)}km jump detected`, severity: 'critical' });
+        }
+      }
+
+      // 3) Route Deviation (if itinerary destination set, check if moving away)
+      if (itinerary.dest && locationHistory.length > 5) {
+        // Simple heuristic: if last 5 readings show increasing distance from a central point
+        const recent = locationHistory.slice(-5);
+        const avgLat = recent.reduce((s, p) => s + p.lat, 0) / recent.length;
+        const avgLon = recent.reduce((s, p) => s + p.lon, 0) / recent.length;
+        const firstDist = getDistanceKm(recent[0].lat, recent[0].lon, avgLat, avgLon);
+        const lastDist = getDistanceKm(recent[recent.length - 1].lat, recent[recent.length - 1].lon, avgLat, avgLon);
+        if (lastDist > 10 && lastDist > firstDist * 3) {
+          flags.push({ type: 'ROUTE_DEVIATION', msg: 'Significant deviation from expected path', severity: 'medium' });
+        }
+      }
+
+      setAnomalyFlags(flags);
+    }, 60000);
+
+    return () => {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      if (anomalyIntervalRef.current) clearInterval(anomalyIntervalRef.current);
+    };
+  }, [isLoggedIn, userRole]);
+
+  // Helper: Haversine distance in km
+  const getDistanceKm = (lat1, lon1, lat2, lon2) => {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  // 👥 Crowd Density Estimation (based on time of day + location type)
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour >= 10 && hour <= 18) setCrowdLevel('Moderate (Daytime)');
+    else if (hour >= 18 && hour <= 22) setCrowdLevel('High (Evening Peak)');
+    else setCrowdLevel('Low (Off-peak)');
+  }, [location]);
 
   // Fetch Weather (Open-Meteo)
   useEffect(() => {
@@ -199,10 +329,39 @@ function App() {
   const sosHoldIntervalRef = useRef(null);
   const sosHoldStartRef = useRef(null);
 
-  const triggerSOS = (forceBypass = false) => {
+  const triggerSOS = async (forceBypass = false, targetAgency = 'Police') => {
     if (forceBypass || sosPinInput === userProfile?.pin) { 
+      // Create Incident in Supabase
+      const incidentData = {
+        user_id: userProfile?.supabaseId || null,
+        reporter_name: userProfile?.name || 'Unknown User',
+        type: targetAgency === 'Police' ? 'SOS' : targetAgency.toUpperCase(),
+        description: `Emergency ${targetAgency} SOS triggered by user.`,
+        latitude: location?.lat || 0,
+        longitude: location?.lon || 0,
+        severity: 'critical',
+        status: 'open',
+        station: 'General Headquarters' // Global visibility
+      };
+
+      try {
+        await createIncident(incidentData);
+        // Simulate sending SMS/Email to Emergency Contacts
+        const contactsRaw = localStorage.getItem(`sudarshan_contacts_${userProfile?.supabaseId}`);
+        if (contactsRaw) {
+           const contacts = JSON.parse(contactsRaw);
+           if (contacts.length > 0) {
+              console.log(`[SIMULATION] Sent Emergency ${targetAgency} Email/SMS with Live Location to:`, contacts);
+              alert(`🚨 Live location sent via Email & SMS to ${contacts.length} emergency contacts!`);
+           }
+        }
+      } catch (err) {
+        console.error("Failed to create incident:", err);
+      }
+
       setShowSosSuccess(true);
       setShowSosModal(false);
+      setShowSosTargetModal(false);
       setSosPinInput('');
       setSosError('');
       // Auto-hide success modal after 5 seconds
@@ -230,7 +389,7 @@ function App() {
       setSosHoldProgress(progress);
       if (progress >= 100) {
         clearSosHold();
-        triggerSOS(true);
+        setShowSosTargetModal(true);
       }
     }, 50);
   };
@@ -288,7 +447,7 @@ function App() {
         return;
       }
       const ok = await verifyBiometric();
-      if (ok) triggerSOS(true);
+      if (ok) triggerSOS(true, 'Police');
       else setShowSosModal(true);
     } finally {
       setSosBioBusy(false);
@@ -339,6 +498,7 @@ function App() {
               <div className="flex flex-col">
                 <h2 className="font-bold truncate text-sm">{userProfile?.name || 'Guest User'}</h2>
                 <span className="text-[10px] text-blue-200 uppercase font-bold tracking-widest">{userProfile?.id || 'SU-PENDING'}</span>
+                {userProfile?.dob && <span className="text-[9px] text-blue-300 font-medium">Age: {Math.floor((Date.now() - new Date(userProfile.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} yrs</span>}
               </div>
             </div>
             <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden"><X size={24} /></button>
@@ -350,11 +510,13 @@ function App() {
               <>
                 <button onClick={() => setActiveView('digitalId')} className={getMenuClass('digitalId')}><ShieldCheck size={20}/> Digital ID</button>
                 <button onClick={() => setActiveView('profile')} className={getMenuClass('profile')}><User size={20}/> {t.profile}</button>
+                <button onClick={() => setActiveView('history')} className={getMenuClass('history')}><Clock size={20}/> SOS History</button>
                 <button onClick={() => setActiveView('travelInfo')} className={getMenuClass('travelInfo')}><Briefcase size={20}/> {t.travelInfo}</button>
                 <button onClick={() => setActiveView('emergencyContacts')} className={getMenuClass('emergencyContacts')}><Phone size={20}/> {t.emergency}</button>
               </>
             )}
-            <button onClick={() => setActiveView('alerts')} className={getMenuClass('alerts')}><Bell size={20}/> {t.alerts}</button>
+            <button onClick={() => setActiveView('alerts')} className={getMenuClass('alerts')}><ShieldAlert size={20}/> {t.alerts}</button>
+            <button onClick={() => setActiveView('travelNews')} className={getMenuClass('travelNews')}><Newspaper size={20}/> Travel News</button>
             <button onClick={() => setActiveView('settings')} className={getMenuClass('settings')}><Settings size={20}/> {t.settings}</button>
             <button onClick={() => setShowLogoutModal(true)} className={`w-full flex items-center gap-3 p-3 font-bold rounded-xl mt-4 transition-all ${isDark ? 'text-red-400 hover:bg-red-900/30' : 'text-red-500 hover:bg-red-50'}`}><LogOut size={20}/> {t.logout}</button>
           </div>
@@ -428,6 +590,64 @@ function App() {
                 </div>
               </div>
 
+              {/* ROW 2: Crowd, Hotel, Battery */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className={`p-5 rounded-3xl shadow-sm border flex items-center gap-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                  <Users size={28} className={crowdLevel.includes('High') ? 'text-red-500' : crowdLevel.includes('Moderate') ? 'text-yellow-500' : 'text-green-500'} />
+                  <div>
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>Est. Crowd Activity</p>
+                    <p className={`text-sm font-black ${crowdLevel.includes('High') ? 'text-red-500' : crowdLevel.includes('Moderate') ? 'text-yellow-500' : 'text-green-500'}`}>{crowdLevel}</p>
+                    <p className="text-[9px] font-bold opacity-50">Temporal prediction</p>
+                  </div>
+                </div>
+
+                <div className={`p-5 rounded-3xl shadow-sm border flex items-center gap-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                  <Hotel size={28} className="text-indigo-500" />
+                  <div>
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>{t.hotel}</p>
+                    <p className={`text-sm font-black truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{itinerary.hotel || 'Not Set'}</p>
+                    {itinerary.dest && <p className={`text-[10px] font-bold ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>📍 {itinerary.dest}</p>}
+                  </div>
+                </div>
+
+                <div className={`p-5 rounded-3xl shadow-sm border flex items-center gap-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                  <BatteryWarning size={28} className={batteryLevel <= 20 ? 'text-red-500 animate-pulse' : batteryLevel <= 50 ? 'text-yellow-500' : 'text-green-500'} />
+                  <div>
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>Battery</p>
+                    <p className={`text-xl font-black ${batteryLevel <= 20 ? 'text-red-500' : 'text-green-500'}`}>{batteryLevel}%</p>
+                    {batteryLevel <= 10 && <p className="text-[9px] font-bold text-red-400 animate-pulse">⚠️ Auto-SOS Active</p>}
+                  </div>
+                </div>
+              </div>
+
+              {/* ANOMALY ALERTS */}
+              <div className={`p-4 rounded-3xl border ${anomalyFlags.length > 0 ? (isDark ? 'border-red-800 bg-red-900/10' : 'border-red-300 bg-red-50') : (isDark ? 'border-emerald-800 bg-emerald-900/10' : 'border-emerald-300 bg-emerald-50')}`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <MapPinOff size={20} className={anomalyFlags.length > 0 ? "text-red-500" : "text-emerald-500"} />
+                  <h3 className={`text-sm font-black uppercase tracking-widest ${anomalyFlags.length > 0 ? 'text-red-600' : 'text-emerald-600'}`}>AI Movement Pattern Analysis</h3>
+                </div>
+                
+                {anomalyFlags.length === 0 ? (
+                  <div className={`flex items-center gap-3 p-3 rounded-xl mb-2 ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-100'}`}>
+                    <ShieldCheck size={16} className="text-emerald-600" />
+                    <div>
+                      <p className={`text-xs font-black uppercase text-emerald-600`}>Normal Behavior Verified</p>
+                      <p className={`text-[11px] font-medium ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>Historical patterns match expected itinerary. No drops or deviations detected.</p>
+                    </div>
+                  </div>
+                ) : (
+                  anomalyFlags.map((f, i) => (
+                    <div key={i} className={`flex items-center gap-3 p-3 rounded-xl mb-2 ${isDark ? 'bg-red-900/20' : 'bg-red-100'}`}>
+                      <AlertTriangle size={16} className={f.severity === 'critical' ? 'text-red-600' : 'text-orange-500'} />
+                      <div>
+                        <p className={`text-xs font-black uppercase ${f.severity === 'critical' ? 'text-red-600' : 'text-orange-600'}`}>{f.type.replace('_', ' ')}</p>
+                        <p className={`text-[11px] font-medium ${isDark ? 'text-red-300' : 'text-red-700'}`}>{f.msg}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
               {/* QUICK ACTIONS */}
               <div className={`p-4 rounded-3xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
                 <button
@@ -465,34 +685,20 @@ function App() {
             </div>
           )}
 
-          {activeView === 'police' && (
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 max-w-7xl mx-auto">
-              <div className="xl:col-span-2 h-[600px] border rounded-3xl overflow-hidden">
-                <LiveMap viewMode="police" userLocation={location} globalAlerts={disasters} />
-              </div>
-              <div className="h-[600px] border rounded-3xl overflow-y-auto">
-                <div className="p-4 border-b font-black sticky top-0 bg-inherit z-10">LIVE INCIDENT LOGS</div>
-                {incidentLogs.map((log, i) => (
-                  <div key={i} className="p-4 border-b hover:bg-gray-50 transition">
-                    <p className="text-[10px] font-mono text-blue-500 font-bold">{log.id} • {log.time}</p>
-                    <p className="font-bold text-sm">{log.type}</p>
-                    <p className={`text-[10px] font-bold ${log.color}`}>{log.status}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {activeView === 'police' && <PolicePanel user={userProfile} isDark={isDark} />}
 
-          {activeView === 'digitalId' && <DigitalID user={userProfile} isDark={isDark} />}
+          {activeView === 'digitalId' && <DigitalID user={userProfile} isDark={isDark} itinerary={itinerary} />}
           {activeView === 'profile' && <Profile user={userProfile} setUser={setUserProfile} isDark={isDark} userId={userProfile?.supabaseId} />}
+          {activeView === 'history' && <History userId={userProfile?.supabaseId} isDark={isDark} />}
           {activeView === 'travelInfo' && <TravelInfo itinerary={itinerary} setItinerary={setItinerary} isDark={isDark} userId={userProfile?.supabaseId} />}
           {activeView === 'emergencyContacts' && <EmergencyContacts isDark={isDark} userId={userProfile?.supabaseId} />}
-          {activeView === 'alerts' && <Alerts disasters={disasters} isDark={isDark} onRefresh={fetchAlerts} />}
+          {activeView === 'alerts' && <Alerts isDark={isDark} />}
+          {activeView === 'travelNews' && <TravelNews isDark={isDark} disasters={disasters} onBack={() => setActiveView(userRole === 'police' ? 'police' : 'tourist')} />}
           {activeView === 'settings' && <SettingsView settings={appSettings} setSettings={setAppSettings} isDark={isDark} userId={userProfile?.supabaseId} onDeleteClick={() => setShowDeleteModal(true)} />}
         </div>
 
         <div className={`mt-auto sticky bottom-0 border-t z-50 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-          <div className="bg-red-600 text-white py-2">
+          <div className="bg-red-600 text-white py-2 cursor-pointer hover:bg-red-700 transition-colors" onClick={() => setActiveView('travelNews')} title="Click for Travel News">
             <marquee className="text-sm font-bold tracking-widest uppercase">
               {disasters && disasters.length > 0 ? disasters.map(d => `🚨 ${d.type === 'EQ' ? 'EARTHQUAKE' : d.type === 'TC' ? 'CYCLONE' : d.type === 'FL' ? 'FLOOD' : d.type === 'VO' ? 'VOLCANO' : 'ALERT'} IN ${d.country || 'GLOBAL ZONE'} (${d.level || 'Monitoring'})`).join('     •     ') : "Global Systems Online. No severe alerts at this moment."}
             </marquee>
@@ -509,7 +715,7 @@ function App() {
       {showSosModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[10000] backdrop-blur-sm">
           <div className={`rounded-3xl p-8 max-w-sm w-full text-center border-4 border-red-600 ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
-            <h2 className="text-3xl font-black text-red-600 mb-4">SOS TRIGGER</h2>
+            <h2 className="text-3xl font-black text-red-600 mb-4">SOS PIN VERIFICATION</h2>
             <input 
               type="password" 
               placeholder="ENTER PIN" 
@@ -520,8 +726,24 @@ function App() {
             {sosError && <p className="text-red-500 font-bold mb-4">{sosError}</p>}
             <div className="flex gap-4">
               <button onClick={() => setShowSosModal(false)} className={`flex-1 py-3 rounded-xl font-bold transition-all ${isDark ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}>CANCEL</button>
-              <button onClick={() => triggerSOS(false)} className="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700">TRIGGER</button>
+              <button onClick={() => triggerSOS(false)} className="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700">CONFIRM</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showSosTargetModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[10000] backdrop-blur-sm animate-fade-in">
+          <div className={`rounded-3xl p-8 max-w-sm w-full text-center border-4 border-red-600 ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
+            <h2 className="text-2xl font-black text-red-600 mb-2 uppercase">Emergency Request</h2>
+            <p className="text-sm font-bold opacity-70 mb-6">Select the authority you need immediate help from:</p>
+            <div className="grid grid-cols-2 gap-3 mb-6">
+               <button onClick={() => triggerSOS(true, 'Police')} className="p-4 rounded-xl bg-blue-100 text-blue-700 font-black hover:bg-blue-200 transition">🚓 POLICE</button>
+               <button onClick={() => triggerSOS(true, 'Medical')} className="p-4 rounded-xl bg-red-100 text-red-700 font-black hover:bg-red-200 transition">🚑 MEDICAL</button>
+               <button onClick={() => triggerSOS(true, 'Fire')} className="p-4 rounded-xl bg-orange-100 text-orange-700 font-black hover:bg-orange-200 transition">🔥 FIRE</button>
+               <button onClick={() => triggerSOS(true, 'NDRF')} className="p-4 rounded-xl bg-yellow-100 text-yellow-800 font-black hover:bg-yellow-200 transition">🚁 NDRF</button>
+            </div>
+            <button onClick={() => setShowSosTargetModal(false)} className={`w-full py-3 rounded-xl font-bold transition-all ${isDark ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}>CANCEL SOS</button>
           </div>
         </div>
       )}

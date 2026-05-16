@@ -27,6 +27,20 @@ const poiIcon = new L.Icon({
   popupAnchor: [1, -34],
 });
 
+const incidentIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+});
+
+const criticalIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+});
+
 const MapUpdater = ({ center }) => {
   const map = useMap();
   useEffect(() => {
@@ -54,7 +68,7 @@ class MapErrorBoundary extends React.Component {
   }
 }
 
-const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, poiType }) => {
+const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, poiType, incidents = [], hotspots = [], zoom = 14, showHeatmap = false, showClusters = false }) => {
   const [currentPosition, setCurrentPosition] = useState([28.6139, 77.2090]); 
   const [routeHistory, setRouteHistory] = useState([]); 
   const [isSafe, setIsSafe] = useState(true);
@@ -63,6 +77,25 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
   const [routePath, setRoutePath] = useState([]);
   const [routingInfo, setRoutingInfo] = useState(null);
   const [showLegend, setShowLegend] = useState(false);
+  const [mockClusters, setMockClusters] = useState([]);
+
+  // Generate mock tourist clusters for police view
+  useEffect(() => {
+    if (showClusters && currentPosition) {
+      const clusters = [];
+      for (let i = 0; i < 20; i++) {
+        // Randomly generate tourists within ~2km radius
+        const latOffset = (Math.random() - 0.5) * 0.04;
+        const lonOffset = (Math.random() - 0.5) * 0.04;
+        clusters.push({
+          id: `tourist-${i}`,
+          lat: currentPosition[0] + latOffset,
+          lon: currentPosition[1] + lonOffset,
+        });
+      }
+      setMockClusters(clusters);
+    }
+  }, [showClusters, currentPosition]);
 
   // Sync with App.jsx location
   useEffect(() => {
@@ -201,7 +234,7 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
       <MapErrorBoundary>
         <MapContainer 
           center={currentPosition} 
-          zoom={14} 
+          zoom={zoom} 
           scrollWheelZoom={false}
           style={{ height: '100%', width: '100%', minHeight: '400px', zIndex: 10 }}
         >
@@ -235,6 +268,56 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
             return null;
           })}
 
+          {/* HEATMAP LAYER */}
+          {showHeatmap && incidents.map((inc, i) => {
+            const lat = parseFloat(inc.latitude);
+            const lon = parseFloat(inc.longitude);
+            if (!isNaN(lat) && !isNaN(lon)) {
+              return (
+                <Circle 
+                  key={`heat-inc-${i}`}
+                  center={[lat, lon]}
+                  pathOptions={{ fillColor: 'red', fillOpacity: 0.2, color: 'transparent' }}
+                  radius={800} // large radius for heatmap effect
+                />
+              );
+            }
+            return null;
+          })}
+          
+          {showHeatmap && hotspots.map((hs, i) => {
+             const lat = parseFloat(hs.latitude);
+             const lon = parseFloat(hs.longitude);
+             if (!isNaN(lat) && !isNaN(lon)) {
+               return (
+                 <Circle 
+                   key={`heat-hs-${i}`}
+                   center={[lat, lon]}
+                   pathOptions={{ fillColor: 'orange', fillOpacity: 0.15, color: 'transparent' }}
+                   radius={1200} 
+                 />
+               );
+             }
+             return null;
+          })}
+
+          {/* TOURIST CLUSTERS */}
+          {showClusters && mockClusters.map(c => (
+             <CircleMarker 
+               key={c.id} 
+               center={[c.lat, c.lon]} 
+               pathOptions={{ fillColor: '#10b981', color: '#047857', weight: 1, fillOpacity: 0.7 }}
+               radius={6}
+             >
+               <Popup>
+                 <div className="text-center p-1">
+                   <p className="font-bold text-xs">Tourist Activity</p>
+                   <p className="text-[10px] text-gray-500">Live tracker signal</p>
+                 </div>
+               </Popup>
+             </CircleMarker>
+          ))}
+
           {/* Nearby POIs */}
           {nearbyPOIs && Array.isArray(nearbyPOIs) && nearbyPOIs.map((poi, i) => {
             if (poi.pos && !isNaN(parseFloat(poi.pos[0])) && !isNaN(parseFloat(poi.pos[1]))) {
@@ -259,6 +342,49 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
 
           {/* Routing Polyline */}
           {routePath && Array.isArray(routePath) && routePath.length > 0 && <Polyline positions={routePath} color="#2563eb" weight={6} opacity={0.8} dashArray="10, 10" />}
+
+          {/* Actual Incidents (Police View) */}
+          {viewMode === 'police' && incidents && incidents.map((inc, i) => (
+            <Marker 
+              key={`incident-${inc.id}-${i}`} 
+              position={[inc.latitude, inc.longitude]} 
+              icon={inc.severity === 'critical' ? criticalIcon : incidentIcon}
+            >
+              <Popup>
+                <div className="p-1">
+                  <p className="text-blue-600 font-black text-[10px] uppercase">{inc.type}</p>
+                  <h4 className="font-bold text-sm">Case #{inc.id.slice(0, 8)}</h4>
+                  <p className="text-[10px] mt-1">{inc.description}</p>
+                  <p className={`text-[10px] font-bold mt-1 ${inc.status === 'resolved' ? 'text-emerald-600' : 'text-orange-600'}`}>
+                    STATUS: {inc.status.toUpperCase()}
+                  </p>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+
+          {/* Hotspots (Circles) */}
+          {hotspots && hotspots.map((spot, i) => (
+            <Circle
+              key={`hotspot-${spot.id}-${i}`}
+              center={[spot.latitude, spot.longitude]}
+              radius={spot.radius_meters || 500}
+              pathOptions={{
+                color: 'red',
+                fillColor: 'red',
+                fillOpacity: 0.2,
+                weight: 1
+              }}
+            >
+              <Popup>
+                <div className="p-1">
+                  <p className="text-red-600 font-black text-[10px] uppercase">DANGER ZONE</p>
+                  <h4 className="font-bold text-sm">{spot.type}</h4>
+                  <p className="text-[10px]">{spot.description}</p>
+                </div>
+              </Popup>
+            </Circle>
+          ))}
 
         </MapContainer>
       </MapErrorBoundary>

@@ -21,6 +21,33 @@ export const isSupabaseConfigured = isConfigured;
 // 🔐 Authentication
 // ============================================
 
+export const sendOtpEmail = async (email) => {
+  try {
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false }
+    });
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error };
+  }
+};
+
+export const verifyOtpEmail = async (email, token) => {
+  try {
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'email'
+    });
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error };
+  }
+};
+
 export const authSignUp = async (email, password, userData) => {
   try {
     const { data, error } = await supabase.auth.signUp({
@@ -54,7 +81,8 @@ export const authSignUp = async (email, password, userData) => {
           email: email,
           phone: userData.phone,
           digital_id: userData.digitalId,
-          role: 'tourist',
+          role: userData.role || 'tourist',
+          station: userData.station || null,
         });
 
       if (profileError) throw profileError;
@@ -361,6 +389,44 @@ export const getIncidents = async (limit = 10) => {
   }
 };
 
+export const getUserIncidents = async (userId, limit = 20) => {
+  try {
+    const { data, error } = await supabase
+      .from('incidents')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    return { data: data || [], error: null };
+  } catch (error) {
+    return { data: [], error };
+  }
+};
+
+export const updateIncident = async (incidentId, updates) => {
+  try {
+    const { data, error } = await supabase
+      .from('incidents')
+      .update(updates)
+      .eq('id', incidentId)
+      .select();
+
+    if (error) throw error;
+    
+    // If data is empty, it usually means RLS blocked the update or ID not found
+    if (!data || data.length === 0) {
+      throw new Error("Update failed: No rows affected. Check your RLS policies or user role.");
+    }
+
+    return { data: data[0], error: null };
+  } catch (error) {
+    console.error("Supabase Update Error:", error);
+    return { data: null, error };
+  }
+};
+
 // ============================================
 // 🔔 Alerts
 // ============================================
@@ -377,6 +443,68 @@ export const getAlerts = async (limit = 20) => {
     return { data: data || [], error: null };
   } catch (error) {
     return { data: [], error };
+  }
+};
+
+export const createAlert = async (alertData) => {
+  try {
+    const { data, error } = await supabase
+      .from('alerts')
+      .insert([alertData])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error };
+  }
+};
+
+// ============================================
+// 🔥 Hotspots
+// ============================================
+
+export const getHotspots = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('hotspots')
+      .select('*')
+      .order('last_updated', { ascending: false });
+
+    if (error) throw error;
+    return { data: data || [], error: null };
+  } catch (error) {
+    return { data: [], error };
+  }
+};
+
+export const createHotspot = async (hotspotData) => {
+  try {
+    const { data, error } = await supabase
+      .from('hotspots')
+      .insert([hotspotData])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error };
+  }
+};
+
+export const deleteHotspot = async (hotspotId) => {
+  try {
+    const { error } = await supabase
+      .from('hotspots')
+      .delete()
+      .eq('id', hotspotId);
+
+    if (error) throw error;
+    return { error: null };
+  } catch (error) {
+    return { error };
   }
 };
 

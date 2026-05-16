@@ -1,18 +1,22 @@
 import React, { useState, useRef } from 'react';
 import { Shield, User, Lock, Upload, ArrowRight, Building, CheckCircle2, Loader2, Fingerprint, AlertTriangle, Mail, Phone } from 'lucide-react';
-import { authSignIn, authSignUp } from '../supabase';
+import { authSignIn, authSignUp, sendOtpEmail, verifyOtpEmail } from '../supabase';
 
 const AuthPage = ({ onLogin }) => {
   const [view, setView] = useState('login'); 
   const [role, setRole] = useState('tourist'); 
-  const [formData, setFormData] = useState({ name: '', dob: '', address: '', email: '', phone: '', password: '', confirmPassword: '' });
+  const [formData, setFormData] = useState({ 
+    name: '', dob: '', address: '', email: '', phone: '', password: '', confirmPassword: '',
+    adminCode: '', station: 'General Headquarters' 
+  });
   const [fileName, setFileName] = useState('');
   const [isUploadingKyc, setIsUploadingKyc] = useState(false);
   const [kycProgress, setKycProgress] = useState(0);
   
   const [generatedId, setGeneratedId] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '']);
-  const otpRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
+  const [registeredUserId, setRegisteredUserId] = useState(null);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const otpRefs = [useRef(null), useRef(null), useRef(null), useRef(null), useRef(null), useRef(null)];
 
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +26,7 @@ const AuthPage = ({ onLogin }) => {
     const newOtp = [...otp];
     newOtp[index] = value.substring(value.length - 1); 
     setOtp(newOtp);
-    if (value !== '' && index < 3) {
+    if (value !== '' && index < 5) {
       otpRefs[index + 1].current.focus();
     }
   };
@@ -35,18 +39,7 @@ const AuthPage = ({ onLogin }) => {
     setError('');
     setIsLoading(true);
 
-    if (role === 'police') {
-      if (formData.email !== 'admin' || formData.password !== '123456') {
-        setError("❌ ACCESS DENIED: Invalid Administrator ID or Password.");
-        setIsLoading(false);
-        return; 
-      }
-      onLogin({ name: 'Police Control Room', id: 'POLICE-HQ-01', phone: "Not Set", pin: '123456', avatar: null }, 'police');
-      setIsLoading(false);
-      return;
-    }
-
-    // Tourist login with Supabase
+    // Basic validation
     if (!formData.email || (!formData.email.includes('@') && !formData.email.startsWith('SU-'))) {
       setError("Please enter a valid email address or Digital ID.");
       setIsLoading(false);
@@ -64,18 +57,26 @@ const AuthPage = ({ onLogin }) => {
       if (authError) throw authError;
 
       if (data?.profile) {
+        // Check if the selected role matches the user's role in database
+        if (role !== data.profile.role) {
+           setError(`❌ Access Denied: You are registered as a ${data.profile.role}, but trying to login as a ${role}.`);
+           setIsLoading(false);
+           return;
+        }
+
         const userData = {
-          name: data.profile.name || 'Tourist',
-          id: data.profile.digital_id || 'Pending',
+          name: data.profile.name || 'User',
+          id: data.profile.digital_id || (data.profile.role === 'police' ? 'ADMIN-ID' : 'Pending'),
           phone: data.profile.phone || '',
           email: data.user.email,
           pin: formData.password, 
           avatar: data.profile.avatar_url || null,
           supabaseId: data.user.id,
+          role: data.profile.role,
         };
-        onLogin(userData, data.profile.role || 'tourist');
+        onLogin(userData, data.profile.role);
       } else {
-        // Profile missing but auth succeeded
+        // Profile missing but auth succeeded - default to tourist if no role found
         const userData = {
           name: data.user.email.split('@')[0],
           id: 'Pending',
@@ -110,13 +111,20 @@ const AuthPage = ({ onLogin }) => {
       setError("Please enter a valid 10-digit mobile number."); return;
     }
 
+    if (role === 'police') {
+      if (formData.adminCode !== 'admin-2026') {
+        setError("❌ INVALID ACCESS CODE: You must provide a valid Departmental Access Code to register as an Administrator.");
+        return;
+      }
+    }
+
     setView('kyc');
   };
 
   // ==========================================
-  // 3. REGISTRATION STEP 2: KYC UPLOAD
+  // 3. REGISTRATION STEP 2: KYC UPLOAD & SEND REAL OTP
   // ==========================================
-  const handleKycUpload = (e) => {
+  const handleKycUpload = async (e) => {
     e.preventDefault();
     if (!fileName) {
       setError("⚠️ KYC Document (Aadhaar/Passport) is MANDATORY."); return;
@@ -129,24 +137,40 @@ const AuthPage = ({ onLogin }) => {
       setKycProgress(prog);
       if (prog >= 100) {
         clearInterval(interval);
-        setTimeout(() => {
-          setIsUploadingKyc(false);
-          setView('otp');
-        }, 500);
       }
-    }, 400);
+    }, 200);
+
+    // Send Real OTP via Email
+    const { error: otpError } = await sendOtpEmail(formData.email);
+    setIsUploadingKyc(false);
+    
+    if (otpError) {
+      setError(`Failed to send OTP to ${formData.email}: ${otpError.message}`);
+    } else {
+      setView('otp');
+    }
   };
 
   // ==========================================
-  // 4. REGISTRATION STEP 3: OTP VERIFY
+  // 4. REGISTRATION STEP 3: OTP VERIFY (REAL)
   // ==========================================
-  const handleVerifyOtp = (e) => {
+  const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setError('');
     if (otp.includes('')) {
-      setError("Please enter the complete 4-digit OTP."); return;
+      setError("Please enter the complete 6-digit OTP."); return;
     }
-    setView('password');
+    
+    setIsLoading(true);
+    const token = otp.join('');
+    const { error: verifyError } = await verifyOtpEmail(formData.email, token);
+    setIsLoading(false);
+
+    if (verifyError) {
+      setError(`Invalid OTP: ${verifyError.message}`);
+    } else {
+      setView('password');
+    }
   };
 
   // ==========================================
@@ -166,7 +190,10 @@ const AuthPage = ({ onLogin }) => {
     setView('generating');
     
     try {
-      const newId = 'SU-' + Math.floor(Math.random() * 900000 + 100000);
+      const isPolice = role === 'police';
+      const newId = isPolice 
+        ? 'POLICE-' + Math.floor(Math.random() * 9000 + 1000)
+        : 'SU-' + Math.floor(Math.random() * 900000 + 100000);
 
       // Supabase signup
       const { data, error: signUpError } = await authSignUp(formData.email, formData.password, {
@@ -175,11 +202,16 @@ const AuthPage = ({ onLogin }) => {
         dob: formData.dob,
         address: formData.address,
         digitalId: newId,
+        role: role,
+        station: role === 'police' ? formData.station : null,
       });
 
       if (signUpError) throw signUpError;
 
       setGeneratedId(newId);
+      if (data?.user?.id) {
+        setRegisteredUserId(data.user.id);
+      }
       setTimeout(() => {
         setView('success'); 
       }, 2500);
@@ -199,9 +231,12 @@ const AuthPage = ({ onLogin }) => {
       phone: formData.phone,
       email: formData.email,
       pin: formData.password,
-      dob: "", address: "", avatar: null
+      dob: formData.dob, address: formData.address, avatar: null,
+      role: role,
+      supabaseId: registeredUserId,
+      station: role === 'police' ? formData.station : null
     };
-    onLogin(userData, 'tourist');
+    onLogin(userData, role);
   };
 
   return (
@@ -246,10 +281,10 @@ const AuthPage = ({ onLogin }) => {
              </div>
 
              <div>
-               <label className="block text-sm font-bold text-gray-700 mb-2">{role === 'police' ? 'Admin ID' : 'Email Address'}</label>
+               <label className="block text-sm font-bold text-gray-700 mb-2">{role === 'police' ? 'Administrator Email / ID' : 'Email Address'}</label>
                <div className="relative">
                  {role === 'police' ? <User className="absolute left-3 top-3 text-gray-400" size={20} /> : <Mail className="absolute left-3 top-3 text-gray-400" size={20} />}
-                 <input type={role === 'police' ? 'text' : 'email'} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl py-3 pl-10 pr-4 focus:border-blue-500 outline-none font-medium" placeholder={role === 'tourist' ? "your@email.com" : "Enter Admin ID (admin)"} />
+                 <input type="text" onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl py-3 pl-10 pr-4 focus:border-blue-500 outline-none font-medium" placeholder="Enter Email Address" />
                </div>
              </div>
              
@@ -260,7 +295,7 @@ const AuthPage = ({ onLogin }) => {
                </div>
                <div className="relative">
                  <Lock className="absolute left-3 top-3 text-gray-400" size={20} />
-                 <input type="password" onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl py-3 pl-10 pr-4 focus:border-blue-500 outline-none font-medium" placeholder={role === 'police' ? "Enter Admin Pass (123456)" : "••••••••"} />
+                 <input type="password" onChange={(e) => setFormData({...formData, password: e.target.value})} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl py-3 pl-10 pr-4 focus:border-blue-500 outline-none font-medium" placeholder="Enter Password" />
                </div>
              </div>
 
@@ -274,8 +309,8 @@ const AuthPage = ({ onLogin }) => {
              </div>
              
              <p className="text-center text-sm text-gray-600 font-medium mt-4">
-               New tourist? <button type="button" onClick={() => {setView('register'); setError('');}} className="text-blue-600 font-bold hover:underline">Create Digital ID</button>
-             </p>
+                Need an account? <button type="button" onClick={() => {setView('register'); setError('');}} className="text-blue-600 font-bold hover:underline">Register Now</button>
+              </p>
            </form>
           )}
 
@@ -288,17 +323,42 @@ const AuthPage = ({ onLogin }) => {
                   <div className="w-2 h-2 bg-gray-200 rounded-full"></div>
                   <div className="w-2 h-2 bg-gray-200 rounded-full"></div>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-800">Step 1: Basic Info</h2>
-                <p className="text-gray-500 text-sm">Create your Digital ID for safety tracking</p>
+                <h2 className="text-2xl font-bold text-gray-800">Step 1: Registration</h2>
+                <p className="text-gray-500 text-sm">Select your role and enter basic details</p>
               </div>
 
-              <input type="text" placeholder="Full Name (as per ID)" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-3 focus:border-blue-500 outline-none font-medium" />
+              <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
+                <button type="button" onClick={() => {setRole('tourist'); setError('');}} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition ${role === 'tourist' ? 'bg-white text-blue-600 shadow' : 'text-gray-500 hover:text-gray-700'}`}>
+                  <User size={16} /> Tourist
+                </button>
+                <button type="button" onClick={() => {setRole('police'); setError('');}} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold transition ${role === 'police' ? 'bg-white text-indigo-600 shadow' : 'text-gray-500 hover:text-gray-700'}`}>
+                  <Building size={16} /> Administrator
+                </button>
+              </div>
+
+              <input type="text" placeholder={role === 'police' ? "Department Name / Full Name" : "Full Name (as per ID)"} value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-3 focus:border-blue-500 outline-none font-medium" />
+              
+              {role === 'police' && (
+                <div className="space-y-4 animate-fade-in">
+                  <div className="relative">
+                    <Shield className="absolute left-3 top-3.5 text-blue-500" size={20} />
+                    <input 
+                      type="password" 
+                      placeholder="Official Access Code" 
+                      value={formData.adminCode} 
+                      onChange={(e) => setFormData({...formData, adminCode: e.target.value})} 
+                      className="w-full bg-blue-50 border-2 border-blue-200 rounded-xl p-3 pl-10 focus:border-blue-500 outline-none font-bold text-blue-900" 
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-4">
                 <input type="date" placeholder="Date of Birth" value={formData.dob} onChange={(e) => setFormData({...formData, dob: e.target.value})} className="w-1/2 bg-gray-50 border-2 border-gray-200 rounded-xl p-3 focus:border-blue-500 outline-none font-medium text-gray-500" />
                 <input type="tel" placeholder="Phone Number" maxLength="10" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g, '')})} className="w-1/2 bg-gray-50 border-2 border-gray-200 rounded-xl p-3 focus:border-blue-500 outline-none font-medium" />
               </div>
-              <input type="text" placeholder="Full Permanent Address" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-3 focus:border-blue-500 outline-none font-medium" />
-              <input type="email" placeholder="Email Address" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-3 focus:border-blue-500 outline-none font-medium" />
+              <input type="text" placeholder={role === 'police' ? "Department Address" : "Full Permanent Address"} value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-3 focus:border-blue-500 outline-none font-medium" />
+              <input type="email" placeholder={role === 'police' ? "Official Email Address" : "Email Address"} value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-3 focus:border-blue-500 outline-none font-medium" />
               
               <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-blue-700 transition flex justify-center items-center gap-2 mt-4">
                 Proceed to KYC <ArrowRight size={20} />
@@ -319,8 +379,8 @@ const AuthPage = ({ onLogin }) => {
                   <div className="w-2 h-2 bg-gray-200 rounded-full"></div>
                   <div className="w-2 h-2 bg-gray-200 rounded-full"></div>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-800">Step 2: Digital KYC</h2>
-                <p className="text-gray-500 text-sm">Upload an ID for blockchain verification</p>
+                <h2 className="text-2xl font-bold text-gray-800">Step 2: Verification</h2>
+                <p className="text-gray-500 text-sm">{role === 'police' ? 'Upload Department ID or Official Proof' : 'Upload an ID for blockchain verification'}</p>
               </div>
 
               <div className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition relative overflow-hidden ${fileName ? 'border-green-400 bg-green-50' : 'border-gray-300 bg-gray-50 hover:bg-gray-100'}`}>
@@ -330,7 +390,7 @@ const AuthPage = ({ onLogin }) => {
                     <div className="w-3/4 bg-gray-200 rounded-full h-2.5 overflow-hidden">
                       <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{width: `${kycProgress}%`}}></div>
                     </div>
-                    <p className="text-xs font-bold text-blue-800 mt-2">Verifying Aadhaar Data...</p>
+                    <p className="text-xs font-bold text-blue-800 mt-2">{role === 'police' ? 'Verifying Department Data...' : 'Verifying Aadhaar Data...'}</p>
                   </div>
                 )}
                 <input type="file" accept="image/*,.pdf" onChange={(e) => setFileName(e.target.files[0]?.name)} className="hidden" id="kyc-upload-original" disabled={isUploadingKyc} />
@@ -340,7 +400,7 @@ const AuthPage = ({ onLogin }) => {
                   ) : (
                     <div className="flex flex-col items-center justify-center gap-2 text-gray-500">
                       <div className="bg-blue-100 p-4 rounded-full mb-2"><Upload size={28} className="text-blue-600" /></div>
-                      <span className="text-sm font-bold text-gray-800">Upload Aadhaar or Passport <span className="text-red-500">*</span></span>
+                      <span className="text-sm font-bold text-gray-800">{role === 'police' ? 'Upload Official ID / Badge' : 'Upload Aadhaar or Passport'} <span className="text-red-500">*</span></span>
                       <span className="text-[11px] font-medium opacity-70">JPG, PNG, or PDF up to 5MB</span>
                     </div>
                   )}
@@ -362,9 +422,9 @@ const AuthPage = ({ onLogin }) => {
                 <div className="w-2 h-2 bg-gray-200 rounded-full"></div>
               </div>
               <h2 className="text-2xl font-bold text-gray-800">Step 3: Enter OTP</h2>
-              <p className="text-gray-500 text-sm mb-6">We've sent a secure 4-digit code to <br/><span className="font-bold text-gray-800">{formData.phone || '+91-XXXXXXXXXX'}</span></p>
+              <p className="text-gray-500 text-sm mb-6">We've sent a secure 6-digit code to <br/><span className="font-bold text-gray-800">{formData.email}</span></p>
               
-              <div className="flex justify-center gap-3 mb-6">
+              <div className="flex justify-center gap-2 mb-6">
                 {otp.map((digit, index) => (
                   <input 
                     key={index} ref={otpRefs[index]} type="number" value={digit}
@@ -374,8 +434,8 @@ const AuthPage = ({ onLogin }) => {
                 ))}
               </div>
 
-              <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-blue-700 transition flex justify-center gap-2 items-center">
-                Verify OTP <ArrowRight size={20}/>
+              <button type="submit" disabled={isLoading} className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-blue-700 transition flex justify-center gap-2 items-center disabled:opacity-70">
+                {isLoading ? <><Loader2 size={20} className="animate-spin" /> Verifying...</> : <>Verify OTP <ArrowRight size={20}/></>}
               </button>
             </form>
           )}
@@ -427,7 +487,7 @@ const AuthPage = ({ onLogin }) => {
               <h2 className="text-2xl font-black text-gray-800">ID Generated!</h2>
               
               <div className="bg-gray-50 border-2 border-dashed border-gray-300 p-6 rounded-2xl relative">
-                <p className="text-xs text-gray-500 uppercase font-bold mb-1">Your Sudarshan Digital ID</p>
+                <p className="text-xs text-gray-500 uppercase font-bold mb-1">{role === 'police' ? 'Your Administrator ID' : 'Your Sudarshan Digital ID'}</p>
                 <p className="text-3xl font-black text-blue-600 tracking-widest">{generatedId}</p>
               </div>
               
