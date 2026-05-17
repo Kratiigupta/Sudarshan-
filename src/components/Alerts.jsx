@@ -101,9 +101,9 @@ const Alerts = ({ isDark }) => {
             </div>
           ))
         ) : (
-          <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-300 dark:bg-slate-800 dark:border-slate-700">
+          <div className={`text-center py-20 rounded-3xl border border-dashed ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-300'}`}>
             <Globe size={60} className="mx-auto text-blue-500 opacity-20 mb-4" />
-            <p className="text-xl font-bold text-gray-500 dark:text-slate-400">No active incidents found.</p>
+            <p className={`text-xl font-bold ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>No active incidents found.</p>
             <p className="text-sm font-medium text-gray-400 mt-2">All systems clear. Stay safe!</p>
           </div>
         )}

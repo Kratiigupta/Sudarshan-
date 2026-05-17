@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, useMap, Polyline } from 'react-leaflet';
-import { Crosshair, MapPin, Navigation, Loader2 } from 'lucide-react';
+import { Crosshair, Navigation, Loader2 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -70,8 +70,6 @@ class MapErrorBoundary extends React.Component {
 
 const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, poiType, incidents = [], hotspots = [], zoom = 14, showHeatmap = false, showClusters = false }) => {
   const [currentPosition, setCurrentPosition] = useState([28.6139, 77.2090]); 
-  const [routeHistory, setRouteHistory] = useState([]); 
-  const [isSafe, setIsSafe] = useState(true);
   const [isLocating, setIsLocating] = useState(false);
   const [nearbyPOIs, setNearbyPOIs] = useState([]);
   const [routePath, setRoutePath] = useState([]);
@@ -84,7 +82,6 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
     if (showClusters && currentPosition) {
       const clusters = [];
       for (let i = 0; i < 20; i++) {
-        // Randomly generate tourists within ~2km radius
         const latOffset = (Math.random() - 0.5) * 0.04;
         const lonOffset = (Math.random() - 0.5) * 0.04;
         clusters.push({
@@ -103,7 +100,6 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
   useEffect(() => {
     if (userLocation) {
       setCurrentPosition([userLocation.lat, userLocation.lon]);
-      setRouteHistory(prev => [...prev, [userLocation.lat, userLocation.lon]]);
     }
   }, [userLocation]);
 
@@ -130,7 +126,6 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
     setIsPoiLoading(true);
     let query = '';
     
-    // Highly robust Overpass queries to act like Google Maps (max 25km radius, broad exact OSM tags)
     if (type === 'Hospitals') {
       query = `[out:json][timeout:15];(nwr["amenity"~"hospital|clinic|doctors"](around:25000,${currentPosition[0]},${currentPosition[1]});nwr["healthcare"](around:25000,${currentPosition[0]},${currentPosition[1]}););out center;`;
     } else if (type === 'Police') {
@@ -163,7 +158,6 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
       
       if (!data) throw new Error("All mapping servers are currently unreachable.");
       
-      let sortedPois = [];
       if (data && data.elements && data.elements.length > 0) {
         const parsedPois = data.elements.map(e => {
           const lat = e.lat || e.center?.lat;
@@ -231,27 +225,29 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
   };
 
   return (
-    <div className="relative w-full h-full min-h-[400px]">
+    <div className="relative w-full h-full min-h-[400px] overflow-hidden">
       
+      {/* ── Recenter button ── stays inside map container */}
       <button 
         onClick={fetchMyLocation}
         disabled={isLocating}
-        className="absolute top-4 right-4 z-[780] bg-white text-blue-600 p-3 rounded-full shadow-lg border border-blue-100 hover:bg-blue-50 transition flex items-center justify-center disabled:opacity-50"
+        className="absolute top-3 right-3 z-[500] bg-white text-blue-600 p-2.5 rounded-full shadow-lg border border-blue-100 hover:bg-blue-50 transition flex items-center justify-center disabled:opacity-50"
       >
-        <Crosshair size={24} className={isLocating ? "animate-spin" : ""} />
+        <Crosshair size={20} className={isLocating ? "animate-spin" : ""} />
       </button>
 
+      {/* ── Route info overlay ── */}
       {routingInfo && (
-        <div className="absolute top-4 left-4 z-[780] bg-white/90 p-4 rounded-2xl shadow-xl border border-blue-100 backdrop-blur-sm animate-fade-in">
-          <div className="flex items-center gap-3 text-blue-900">
-            <Navigation size={24} className="animate-bounce" />
+        <div className="absolute top-3 left-3 z-[500] bg-white/95 p-3 rounded-2xl shadow-xl border border-blue-100 backdrop-blur-sm animate-fade-in max-w-[240px]">
+          <div className="flex items-center gap-2 text-blue-900">
+            <Navigation size={18} className="animate-bounce flex-shrink-0" />
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Route Found</p>
-              <p className="text-lg font-black">{routingInfo.distance} km (Driving) • {routingInfo.duration} mins</p>
+              <p className="text-sm font-black">{routingInfo.distance} km • {routingInfo.duration} mins</p>
             </div>
             <button
               onClick={clearRoute}
-              className="ml-2 text-[10px] font-black uppercase bg-gray-100 px-2 py-1 rounded-md hover:bg-gray-200"
+              className="ml-1 text-[10px] font-black uppercase bg-gray-100 px-2 py-1 rounded-md hover:bg-gray-200 flex-shrink-0"
             >
               Clear
             </button>
@@ -259,29 +255,36 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
         </div>
       )}
 
+      {/* ── Map Safety Panel ── stays clipped inside map */}
       {viewMode === 'tourist' && (
-        <div className="absolute top-20 left-4 z-[780] max-w-[260px] bg-white/90 rounded-2xl border border-gray-200 shadow-lg p-3 backdrop-blur-sm">
+        <div className="absolute bottom-12 left-3 z-[500] max-w-[230px] bg-white/95 rounded-xl border border-gray-200 shadow-lg p-2.5 backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Map Safety Panel</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-gray-500">Map Safety Panel</p>
             <button
               onClick={() => setShowLegend((prev) => !prev)}
-              className="text-[10px] font-bold text-blue-600 hover:underline"
+              className="text-[9px] font-bold text-blue-600 hover:underline"
             >
               {showLegend ? 'Hide' : 'Show'} Legend
             </button>
           </div>
-          <p className="mt-1 text-xs font-semibold text-gray-700">
-            {poiType ? `Showing nearest ${poiType.toLowerCase()} and route options.` : 'Choose Hospitals or Police from top controls for nearby help.'}
+          <p className="mt-1 text-[11px] font-semibold text-gray-700">
+            {poiType ? `Showing nearest ${poiType.toLowerCase()}.` : 'Choose Hospitals or Police above.'}
           </p>
           {showLegend && (
-            <div className="mt-2 text-[10px] font-bold text-gray-600 space-y-1">
-              <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-500" /> Disaster alert marker</div>
-              <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-500" /> Help point marker</div>
-              <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-green-500" /> Your live location</div>
+            <div className="mt-1.5 text-[9px] font-bold text-gray-600 space-y-0.5">
+              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500" /> Disaster alert</div>
+              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500" /> Help point</div>
+              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-green-500" /> Your location</div>
             </div>
           )}
         </div>
       )}
+
+      {/* ── GPS status badge ── stays inside map at bottom-left */}
+      <div className="absolute bottom-3 left-3 z-[500] bg-white/95 px-3 py-1.5 rounded-lg shadow-md border border-gray-200 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-gray-700" style={viewMode === 'tourist' ? { left: 'auto', right: '12px' } : {}}>
+        <div className={`w-2 h-2 rounded-full ${userLocation ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></div>
+        {userLocation ? 'GPS ACTIVE' : 'WAITING GPS'}
+      </div>
 
       <MapErrorBoundary>
         <MapContainer 
@@ -330,7 +333,7 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
                   key={`heat-inc-${i}`}
                   center={[lat, lon]}
                   pathOptions={{ fillColor: 'red', fillOpacity: 0.2, color: 'transparent' }}
-                  radius={800} // large radius for heatmap effect
+                  radius={800}
                 />
               );
             }
@@ -441,37 +444,33 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
         </MapContainer>
       </MapErrorBoundary>
 
-      <div className="absolute bottom-4 left-4 z-[780] bg-white/90 px-4 py-2 rounded-xl shadow-lg border border-gray-200 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-gray-700">
-        <div className={`w-2.5 h-2.5 rounded-full ${userLocation ? 'bg-green-500 animate-pulse' : 'bg-yellow-500'}`}></div>
-        {userLocation ? 'REAL-TIME GPS ACTIVE' : 'WAITING FOR GPS'}
-      </div>
-
+      {/* POI Panel (right side, desktop only) */}
       {(isPoiLoading || (nearbyPOIs && nearbyPOIs.length > 0) || (poiType && !isPoiLoading && nearbyPOIs.length === 0)) && (
-        <div className="absolute bottom-4 right-4 z-[780] max-h-[300px] overflow-y-auto w-[250px] bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200 animate-fade-in p-3 hidden sm:block">
-          <p className="text-[10px] font-black uppercase tracking-widest text-center pb-2 text-blue-600 border-b border-gray-100">
+        <div className="absolute top-3 right-14 z-[500] max-h-[280px] overflow-y-auto w-[220px] bg-white/95 backdrop-blur-md rounded-xl shadow-xl border border-gray-200 animate-fade-in p-2.5 hidden sm:block">
+          <p className="text-[9px] font-black uppercase tracking-widest text-center pb-1.5 text-blue-600 border-b border-gray-100">
             {isPoiLoading ? 'Scanning Grid...' : `Nearest ${poiType}`}
           </p>
           
           {isPoiLoading ? (
-            <div className="flex flex-col items-center justify-center py-8 gap-2">
-              <Loader2 className="animate-spin text-blue-600" size={32} />
-              <p className="text-[10px] font-bold text-gray-400">CONNECTING TO SATELLITE...</p>
+            <div className="flex flex-col items-center justify-center py-6 gap-2">
+              <Loader2 className="animate-spin text-blue-600" size={28} />
+              <p className="text-[9px] font-bold text-gray-400">CONNECTING TO SATELLITE...</p>
             </div>
           ) : nearbyPOIs.length > 0 ? (
-            <div className="flex flex-col gap-2 mt-2">
+            <div className="flex flex-col gap-1.5 mt-1.5">
               {nearbyPOIs.map((poi, idx) => (
-                <div key={idx} className="p-3 bg-gray-50 rounded-xl hover:bg-blue-50 transition border border-transparent hover:border-blue-200 cursor-pointer shadow-sm" onClick={() => calculateRoute(poi.pos)}>
-                  <h4 className="font-bold text-sm truncate text-gray-800">{poi.name}</h4>
-                  <div className="flex justify-between items-center mt-2">
-                    <span className="text-[10px] font-bold text-gray-500 bg-white px-2 py-0.5 rounded-md border">{poi.distance} km (Aerial)</span>
-                    <span className="text-[10px] font-black text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md transition shadow-sm">GO</span>
+                <div key={idx} className="p-2 bg-gray-50 rounded-lg hover:bg-blue-50 transition border border-transparent hover:border-blue-200 cursor-pointer shadow-sm" onClick={() => calculateRoute(poi.pos)}>
+                  <h4 className="font-bold text-[11px] truncate text-gray-800">{poi.name}</h4>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-[9px] font-bold text-gray-500 bg-white px-1.5 py-0.5 rounded border">{poi.distance} km</span>
+                    <span className="text-[9px] font-black text-white bg-blue-600 hover:bg-blue-700 px-2 py-0.5 rounded transition shadow-sm">GO</span>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-8">
-              <p className="text-xs font-bold text-gray-400">No {poiType} found within 15km tactical radius.</p>
+            <div className="text-center py-6">
+              <p className="text-[10px] font-bold text-gray-400">No {poiType} found within 25km radius.</p>
             </div>
           )}
         </div>

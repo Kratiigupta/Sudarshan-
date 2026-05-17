@@ -64,7 +64,7 @@ const DigitalID = ({ user, isDark, itinerary = {} }) => {
             </div>
           </div>
 
-          <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-slate-600 to-transparent mb-8"></div>
+          <div className={`w-full h-px bg-gradient-to-r from-transparent to-transparent mb-8 ${isDark ? 'via-slate-600' : 'via-gray-300'}`}></div>
 
           {/* Blockchain & Status */}
           <div className="flex flex-col gap-4">
@@ -73,7 +73,7 @@ const DigitalID = ({ user, isDark, itinerary = {} }) => {
                 <CheckCircle2 size={20} />
               </div>
               <div>
-                <p className="text-sm font-black text-green-600 dark:text-green-500">KYC Verified</p>
+                <p className={`text-sm font-black ${isDark ? 'text-green-500' : 'text-green-600'}`}>KYC Verified</p>
                 <p className={`text-xs font-bold ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Aadhaar / Passport Authenticated</p>
               </div>
             </div>
@@ -84,7 +84,7 @@ const DigitalID = ({ user, isDark, itinerary = {} }) => {
               </div>
               <div className="overflow-hidden">
                 <p className={`text-[10px] font-black uppercase tracking-wider mb-0.5 ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>Blockchain Hash</p>
-                <p className="text-xs font-mono font-bold truncate text-blue-600 dark:text-blue-400">0x{bHash}...A9B2</p>
+                <p className={`text-xs font-mono font-bold truncate ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>0x{bHash}...A9B2</p>
               </div>
             </div>
           </div>

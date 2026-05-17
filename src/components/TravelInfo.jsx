@@ -228,7 +228,7 @@ const TravelInfo = ({ itinerary, setItinerary, isDark, userId }) => {
                   <h4 className={`font-black text-lg mb-1 truncate ${isDark ? 'text-white' : 'text-gray-800'}`}>{b.details.name}</h4>
                   <p className={`text-sm font-medium ${isDark ? 'text-slate-300' : 'text-gray-600'}`}><Calendar size={14} className="inline mr-1"/> {b.details.date}</p>
                   <p className={`text-sm font-medium mt-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}><Users size={14} className="inline mr-1"/> {b.details.guests} People</p>
-                  <p className="text-[10px] font-mono text-gray-400 mt-4 pt-2 border-t border-gray-200 dark:border-slate-600">ID: {b.id}</p>
+                  <p className={`text-[10px] font-mono text-gray-400 mt-4 pt-2 border-t ${isDark ? 'border-slate-600' : 'border-gray-200'}`}>ID: {b.id}</p>
                 </div>
               ))}
             </div>

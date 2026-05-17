@@ -14,7 +14,7 @@ import PolicePanel from './components/PolicePanel';
 import History from './components/History';
 import TravelNews from './components/TravelNews';
 import { authSignOut, createIncident, deleteUserProfile } from './supabase';
-import { Menu, X, User, Lock, Trash2, Phone, Settings, Gamepad2, AlertTriangle, Briefcase, Bell, LogOut, CloudSun, Users, Building, Home, Navigation, Activity, ShieldAlert, ShieldCheck, Clock, Newspaper, Watch, BatteryWarning, MapPinOff, Hotel } from 'lucide-react';
+import { Menu, X, User, Phone, Settings, Gamepad2, AlertTriangle, Briefcase, LogOut, CloudSun, Users, Home, Activity, ShieldAlert, ShieldCheck, Clock, Newspaper, BatteryWarning, MapPinOff, Hotel } from 'lucide-react';
 
 const translations = {
   en: {
@@ -509,7 +509,11 @@ function App() {
 
   const handleDeleteAccount = async () => {
     if (userProfile?.supabaseId) {
-      await deleteUserProfile(userProfile.supabaseId);
+      const { error } = await deleteUserProfile(userProfile.supabaseId);
+      if (error) {
+        alert("Failed to delete account from Supabase: " + (error.message || "Please make sure RLS delete policies are enabled."));
+        return;
+      }
     }
     await handleLogout();
     setShowDeleteModal(false);
@@ -739,7 +743,7 @@ function App() {
                     </div>
                   </div>
                   
-                  <div className={`rounded-3xl border shadow-sm overflow-hidden h-[450px] relative ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                  <div className={`rounded-3xl border shadow-sm h-[450px] relative ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`} style={{ overflow: 'hidden', isolation: 'isolate' }}>
                     <LiveMap onAlert={handleMapAlert} userLocation={location} globalAlerts={disasters} poiType={poiType} />
                   </div>
                 </div>
@@ -759,7 +763,7 @@ function App() {
           {activeView === 'settings' && <SettingsView settings={appSettings} setSettings={setAppSettings} isDark={isDark} userId={userProfile?.supabaseId} onDeleteClick={() => setShowDeleteModal(true)} />}
         </div>
 
-        <div className={`mt-auto sticky bottom-0 border-t z-50 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className={`mt-auto sticky bottom-0 border-t z-[999] ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
           <div className="bg-red-600 text-white py-2 cursor-pointer hover:bg-red-700 transition-colors" onClick={() => setActiveView('travelNews')} title="Click for Travel News">
             <marquee className="text-sm font-bold tracking-widest uppercase">
               {disasters && disasters.length > 0 ? disasters.map(d => `🚨 ${d.type === 'EQ' ? 'EARTHQUAKE' : d.type === 'TC' ? 'CYCLONE' : d.type === 'FL' ? 'FLOOD' : d.type === 'VO' ? 'VOLCANO' : 'ALERT'} IN ${d.country || 'GLOBAL ZONE'} (${d.level || 'Monitoring'})`).join('     •     ') : "Global Systems Online. No severe alerts at this moment."}

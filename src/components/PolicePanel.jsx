@@ -4,14 +4,8 @@ import {
   AlertCircle, 
   CheckCircle2, 
   Clock, 
-  Map as MapIcon, 
-  Bell, 
-  Users, 
-  Search, 
-  Filter, 
-  MoreHorizontal, 
   MapPin, 
-  Plus, 
+  Bell,
   X,
   RefreshCcw,
   Activity,
@@ -210,10 +204,10 @@ const PolicePanel = ({ user, isDark }) => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex bg-gray-100 dark:bg-slate-800 rounded-lg p-1">
-                 <button onClick={() => setMgmtTab('incidents')} className={`px-4 py-1.5 text-xs font-black rounded-md transition ${mgmtTab === 'incidents' ? 'bg-blue-600 text-white shadow-lg' : 'opacity-50 hover:opacity-100'}`}>INCIDENTS</button>
-                 <button onClick={() => setMgmtTab('hotspots')} className={`px-4 py-1.5 text-xs font-black rounded-md transition ${mgmtTab === 'hotspots' ? 'bg-blue-600 text-white shadow-lg' : 'opacity-50 hover:opacity-100'}`}>DANGER ZONES</button>
-                 <button onClick={() => setMgmtTab('alerts')} className={`px-4 py-1.5 text-xs font-black rounded-md transition ${mgmtTab === 'alerts' ? 'bg-blue-600 text-white shadow-lg' : 'opacity-50 hover:opacity-100'}`}>BROADCAST</button>
+              <div className={`flex rounded-lg p-1 ${isDark ? 'bg-slate-800' : 'bg-gray-100'}`}>
+                 <button onClick={() => setMgmtTab('incidents')} className={`px-4 py-1.5 text-xs font-black rounded-md transition ${mgmtTab === 'incidents' ? 'bg-blue-600 text-white shadow-lg' : (isDark ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-900')}`}>INCIDENTS</button>
+                 <button onClick={() => setMgmtTab('hotspots')} className={`px-4 py-1.5 text-xs font-black rounded-md transition ${mgmtTab === 'hotspots' ? 'bg-blue-600 text-white shadow-lg' : (isDark ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-900')}`}>DANGER ZONES</button>
+                 <button onClick={() => setMgmtTab('alerts')} className={`px-4 py-1.5 text-xs font-black rounded-md transition ${mgmtTab === 'alerts' ? 'bg-blue-600 text-white shadow-lg' : (isDark ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-900')}`}>BROADCAST</button>
               </div>
             </div>
           </div>
@@ -221,10 +215,10 @@ const PolicePanel = ({ user, isDark }) => {
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             {mgmtTab === 'incidents' && (
               <div className="flex flex-col h-full">
-                <div className="p-2 px-4 border-b flex items-center justify-between bg-gray-50 dark:bg-slate-800/50">
-                   <div className="flex bg-white dark:bg-slate-800 rounded-lg p-1 border dark:border-slate-700">
-                      <button onClick={() => setView('list')} className={`px-3 py-1 text-[10px] font-black rounded-md transition ${view === 'list' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' : 'opacity-50'}`}>LIST VIEW</button>
-                      <button onClick={() => setView('map')} className={`px-3 py-1 text-[10px] font-black rounded-md transition ${view === 'map' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' : 'opacity-50'}`}>GRID MAP</button>
+                <div className={`p-2 px-4 border-b flex items-center justify-between ${isDark ? 'bg-slate-800/50' : 'bg-gray-50'}`}>
+                   <div className={`flex rounded-lg p-1 border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                      <button onClick={() => setView('list')} className={`px-3 py-1 text-[10px] font-black rounded-md transition ${view === 'list' ? (isDark ? 'bg-blue-900/40 text-blue-400 shadow-sm' : 'bg-blue-100 text-blue-600 shadow-sm') : (isDark ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-900')}`}>LIST VIEW</button>
+                      <button onClick={() => setView('map')} className={`px-3 py-1 text-[10px] font-black rounded-md transition ${view === 'map' ? (isDark ? 'bg-blue-900/40 text-blue-400 shadow-sm' : 'bg-blue-100 text-blue-600 shadow-sm') : (isDark ? 'text-slate-400 hover:text-white' : 'text-gray-500 hover:text-gray-900')}`}>GRID MAP</button>
                    </div>
                    <select 
                     value={filter} 
@@ -239,7 +233,7 @@ const PolicePanel = ({ user, isDark }) => {
                 </div>
                 
                 {view === 'list' ? (
-                  <div className="divide-y dark:divide-slate-800">
+                  <div className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-gray-100'}`}>
                     {filteredIncidents.length === 0 ? (
                       <div className="text-center py-20 opacity-30">No incidents to display</div>
                     ) : (
@@ -287,19 +281,19 @@ const PolicePanel = ({ user, isDark }) => {
                 <form onSubmit={handleCreateHotspot} className={`p-4 rounded-2xl border-2 border-dashed ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
                    <h3 className="font-black text-xs uppercase mb-4 flex items-center gap-2"><Zap size={14} className="text-orange-500"/> Define Danger Zone</h3>
                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <input type="text" placeholder="LATITUDE" value={newHotspot.lat} onChange={e => setNewHotspot({...newHotspot, lat: e.target.value})} required className="p-2.5 rounded-xl border dark:bg-slate-900 dark:border-slate-700 text-xs font-bold" />
-                      <input type="text" placeholder="LONGITUDE" value={newHotspot.lon} onChange={e => setNewHotspot({...newHotspot, lon: e.target.value})} required className="p-2.5 rounded-xl border dark:bg-slate-900 dark:border-slate-700 text-xs font-bold" />
+                      <input type="text" placeholder="LATITUDE" value={newHotspot.lat} onChange={e => setNewHotspot({...newHotspot, lat: e.target.value})} required className={`p-2.5 rounded-xl border text-xs font-bold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`} />
+                      <input type="text" placeholder="LONGITUDE" value={newHotspot.lon} onChange={e => setNewHotspot({...newHotspot, lon: e.target.value})} required className={`p-2.5 rounded-xl border text-xs font-bold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`} />
                    </div>
                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <select value={newHotspot.type} onChange={e => setNewHotspot({...newHotspot, type: e.target.value})} className="p-2.5 rounded-xl border dark:bg-slate-900 dark:border-slate-700 text-xs font-bold">
+                      <select value={newHotspot.type} onChange={e => setNewHotspot({...newHotspot, type: e.target.value})} className={`p-2.5 rounded-xl border text-xs font-bold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
                          <option value="danger">CRIME HOTSPOT</option>
                          <option value="accident">ACCIDENT PRONE</option>
                          <option value="protest">PROTEST ZONE</option>
                          <option value="disaster">NATURAL DISASTER</option>
                       </select>
-                      <input type="number" placeholder="RADIUS (meters)" value={newHotspot.radius} onChange={e => setNewHotspot({...newHotspot, radius: e.target.value})} required className="p-2.5 rounded-xl border dark:bg-slate-900 dark:border-slate-700 text-xs font-bold" />
+                      <input type="number" placeholder="RADIUS (meters)" value={newHotspot.radius} onChange={e => setNewHotspot({...newHotspot, radius: e.target.value})} required className={`p-2.5 rounded-xl border text-xs font-bold ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`} />
                    </div>
-                   <input type="text" placeholder="REASON / DESCRIPTION" value={newHotspot.desc} onChange={e => setNewHotspot({...newHotspot, desc: e.target.value})} required className="w-full p-2.5 rounded-xl border dark:bg-slate-900 dark:border-slate-700 text-xs font-bold mb-4" />
+                   <input type="text" placeholder="REASON / DESCRIPTION" value={newHotspot.desc} onChange={e => setNewHotspot({...newHotspot, desc: e.target.value})} required className={`w-full p-2.5 rounded-xl border text-xs font-bold mb-4 ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`} />
                    <button type="submit" disabled={isActionLoading} className="w-full py-3 bg-orange-600 text-white font-black text-xs rounded-xl hover:bg-orange-700 transition">DEPLOY HOTSPOT TO GRID</button>
                 </form>
 
@@ -335,17 +329,17 @@ const PolicePanel = ({ user, isDark }) => {
                     </div>
                     
                     <div className="space-y-4">
-                       <input type="text" placeholder="ALERT TITLE (e.g. Heavy Rain Alert)" value={newAlert.title} onChange={e => setNewAlert({...newAlert, title: e.target.value})} required className="w-full p-4 rounded-2xl border focus:ring-4 focus:ring-blue-500/20 outline-none font-black text-sm uppercase dark:bg-slate-900 dark:border-slate-700" />
-                       <textarea rows="4" placeholder="DETAILED INSTRUCTIONS..." value={newAlert.desc} onChange={e => setNewAlert({...newAlert, desc: e.target.value})} required className="w-full p-4 rounded-2xl border focus:ring-4 focus:ring-blue-500/20 outline-none font-bold text-sm dark:bg-slate-900 dark:border-slate-700"></textarea>
+                       <input type="text" placeholder="ALERT TITLE (e.g. Heavy Rain Alert)" value={newAlert.title} onChange={e => setNewAlert({...newAlert, title: e.target.value})} required className={`w-full p-4 rounded-2xl border focus:ring-4 focus:ring-blue-500/20 outline-none font-black text-sm uppercase ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`} />
+                       <textarea rows="4" placeholder="DETAILED INSTRUCTIONS..." value={newAlert.desc} onChange={e => setNewAlert({...newAlert, desc: e.target.value})} required className={`w-full p-4 rounded-2xl border focus:ring-4 focus:ring-blue-500/20 outline-none font-bold text-sm ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}></textarea>
                        
                        <div className="grid grid-cols-2 gap-4">
-                          <select value={newAlert.type} onChange={e => setNewAlert({...newAlert, type: e.target.value})} className="p-4 rounded-2xl border font-black text-xs uppercase dark:bg-slate-900 dark:border-slate-700">
+                          <select value={newAlert.type} onChange={e => setNewAlert({...newAlert, type: e.target.value})} className={`p-4 rounded-2xl border font-black text-xs uppercase ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
                              <option value="weather">WEATHER ALERT</option>
                              <option value="crime">SECURITY ALERT</option>
                              <option value="traffic">TRAFFIC BLOCKED</option>
                              <option value="general">GENERAL INFO</option>
                           </select>
-                          <select value={newAlert.severity} onChange={e => setNewAlert({...newAlert, severity: e.target.value})} className="p-4 rounded-2xl border font-black text-xs uppercase dark:bg-slate-900 dark:border-slate-700">
+                          <select value={newAlert.severity} onChange={e => setNewAlert({...newAlert, severity: e.target.value})} className={`p-4 rounded-2xl border font-black text-xs uppercase ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
                              <option value="low">LOW SEVERITY</option>
                              <option value="medium">MEDIUM SEVERITY</option>
                              <option value="high">HIGH SEVERITY</option>
@@ -376,7 +370,7 @@ const PolicePanel = ({ user, isDark }) => {
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 <div>
                   <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3">Live GPS Target</h4>
-                  <div className="h-44 rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-700 relative">
+                  <div className={`h-44 rounded-2xl overflow-hidden border relative ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
                      <LiveMap 
                         userLocation={{ lat: selectedIncident.latitude, lon: selectedIncident.longitude }} 
                         viewMode="police"
@@ -469,7 +463,7 @@ const StatCard = ({ title, value, icon, color, isDark }) => {
 
   return (
     <div className={`p-6 rounded-3xl border-2 flex items-center gap-5 shadow-sm transition-all hover:scale-[1.02] ${colors[color]} ${isDark ? 'text-white' : 'text-slate-900'}`}>
-      <div className={`p-4 rounded-2xl bg-white dark:bg-slate-800 shadow-inner flex-shrink-0`}>
+      <div className={`p-4 rounded-2xl shadow-inner flex-shrink-0 ${isDark ? 'bg-slate-800' : 'bg-white'}`}>
         {icon}
       </div>
       <div>

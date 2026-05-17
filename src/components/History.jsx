@@ -42,7 +42,7 @@ const History = ({ userId, isDark }) => {
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
       <div className={`p-6 rounded-3xl shadow-sm border flex justify-between items-center ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600">
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-blue-600 ${isDark ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
             <Clock size={28} />
           </div>
           <div>
@@ -91,7 +91,7 @@ const History = ({ userId, isDark }) => {
 
               <p className="text-sm opacity-80 mb-6 leading-relaxed">{inc.description || 'Emergency SOS triggered.'}</p>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-100 dark:border-slate-700">
+              <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t ${isDark ? 'border-slate-700' : 'border-gray-100'}`}>
                 <div className="flex items-center gap-2 opacity-70">
                   <MapPin size={14} className="text-blue-500" />
                   <span className="text-xs font-bold truncate">{inc.address || `${inc.latitude.toFixed(4)}, ${inc.longitude.toFixed(4)}`}</span>

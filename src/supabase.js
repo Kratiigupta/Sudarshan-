@@ -270,6 +270,13 @@ export const getProfile = async (userId) => {
 
 export const deleteUserProfile = async (userId) => {
   try {
+    // Delete associated data from all user tables to avoid foreign key issues and clear data
+    await supabase.from('user_settings').delete().eq('user_id', userId);
+    await supabase.from('emergency_contacts').delete().eq('user_id', userId);
+    await supabase.from('itineraries').delete().eq('user_id', userId);
+    await supabase.from('bookings').delete().eq('user_id', userId);
+    await supabase.from('incidents').delete().eq('user_id', userId);
+
     const { error } = await supabase
       .from('profiles')
       .delete()
@@ -278,6 +285,7 @@ export const deleteUserProfile = async (userId) => {
     if (error) throw error;
     return { error: null };
   } catch (error) {
+    console.error("Error deleting user profile and data:", error);
     return { error };
   }
 };
