@@ -130,15 +130,15 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
     setIsPoiLoading(true);
     let query = '';
     
-    // Improved Overpass queries using exact matching for better reliability
+    // Highly robust Overpass queries to act like Google Maps (max 25km radius, broad exact OSM tags)
     if (type === 'Hospitals') {
-      query = `[out:json];(nwr["amenity"="hospital"](around:15000,${currentPosition[0]},${currentPosition[1]});nwr["amenity"="clinic"](around:15000,${currentPosition[0]},${currentPosition[1]});nwr["healthcare"="hospital"](around:15000,${currentPosition[0]},${currentPosition[1]}););out center;`;
+      query = `[out:json][timeout:15];(nwr["amenity"~"hospital|clinic|doctors"](around:25000,${currentPosition[0]},${currentPosition[1]});nwr["healthcare"](around:25000,${currentPosition[0]},${currentPosition[1]}););out center;`;
     } else if (type === 'Police') {
-      query = `[out:json];(nwr["amenity"="police"](around:15000,${currentPosition[0]},${currentPosition[1]}););out center;`;
+      query = `[out:json][timeout:15];(nwr["amenity"="police"](around:25000,${currentPosition[0]},${currentPosition[1]});nwr["police"](around:25000,${currentPosition[0]},${currentPosition[1]}););out center;`;
     } else if (type === 'Museums') {
-      query = `[out:json];(nwr["amenity"="museum"](around:15000,${currentPosition[0]},${currentPosition[1]}););out center;`;
+      query = `[out:json][timeout:15];(nwr["tourism"="museum"](around:25000,${currentPosition[0]},${currentPosition[1]}););out center;`;
     } else {
-      query = `[out:json];(nwr["leisure"="park"](around:15000,${currentPosition[0]},${currentPosition[1]}););out center;`;
+      query = `[out:json][timeout:15];(nwr["leisure"="park"](around:25000,${currentPosition[0]},${currentPosition[1]}););out center;`;
     }
     
     try {
@@ -150,7 +150,7 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
       
       let sortedPois = [];
       if (data && data.elements && data.elements.length > 0) {
-        sortedPois = data.elements.map(e => {
+        const parsedPois = data.elements.map(e => {
           const lat = e.lat || e.center?.lat;
           const lon = e.lon || e.center?.lon;
           
@@ -166,51 +166,15 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
             distance: getDistance(currentPosition[0], currentPosition[1], lat, lon)
           };
         }).filter(e => e.pos[0] && e.pos[1]).sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance)).slice(0, 5);
-      }
-      
-      // FALLBACK: If Overpass API is rate-limited or fails to find anything, generate reliable nearby options
-      if (sortedPois.length === 0) {
-        console.warn(`No ${type} found via API. Activating secure fallback locator.`);
         
-        // Generate 3 nearby mock locations around the user's current GPS
-        for(let i=1; i<=3; i++) {
-           const latOffset = (Math.random() - 0.5) * 0.05; // approx 2-3km
-           const lonOffset = (Math.random() - 0.5) * 0.05;
-           const fallbackLat = currentPosition[0] + latOffset;
-           const fallbackLon = currentPosition[1] + lonOffset;
-           
-           let name = '';
-           if (type === 'Hospitals') name = i === 1 ? 'City General Hospital' : i === 2 ? 'Medicare Clinic' : 'Emergency Center';
-           else if (type === 'Police') name = i === 1 ? 'Central Police Station' : i === 2 ? 'District Outpost' : 'Highway Patrol Checkpoint';
-           else name = `Nearest ${type} Point ${i}`;
-
-           sortedPois.push({
-             id: `fallback-${i}`,
-             pos: [fallbackLat, fallbackLon],
-             name: name,
-             distance: getDistance(currentPosition[0], currentPosition[1], fallbackLat, fallbackLon)
-           });
-        }
-        sortedPois = sortedPois.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+        setNearbyPOIs(parsedPois);
+      } else {
+        setNearbyPOIs([]);
       }
-      
-      setNearbyPOIs(sortedPois);
 
     } catch (err) { 
       console.error("POI Error:", err);
-      // Fallback on error (Network error, CORS, API blocked)
-      const errPois = [];
-      for(let i=1; i<=2; i++) {
-         const latOffset = (Math.random() - 0.5) * 0.04;
-         const lonOffset = (Math.random() - 0.5) * 0.04;
-         errPois.push({
-           id: `err-fallback-${i}`,
-           pos: [currentPosition[0] + latOffset, currentPosition[1] + lonOffset],
-           name: `Local ${type === 'Police' ? 'Police Outpost' : 'Emergency Clinic'}`,
-           distance: getDistance(currentPosition[0], currentPosition[1], currentPosition[0] + latOffset, currentPosition[1] + lonOffset)
-         });
-      }
-      setNearbyPOIs(errPois.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance)));
+      setNearbyPOIs([]);
     } finally {
       setIsPoiLoading(false);
     }
@@ -268,7 +232,7 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
             <Navigation size={24} className="animate-bounce" />
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Route Found</p>
-              <p className="text-lg font-black">{routingInfo.distance} km • {routingInfo.duration} mins</p>
+              <p className="text-lg font-black">{routingInfo.distance} km (Driving) • {routingInfo.duration} mins</p>
             </div>
             <button
               onClick={clearRoute}
@@ -484,7 +448,7 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
                 <div key={idx} className="p-3 bg-gray-50 rounded-xl hover:bg-blue-50 transition border border-transparent hover:border-blue-200 cursor-pointer shadow-sm" onClick={() => calculateRoute(poi.pos)}>
                   <h4 className="font-bold text-sm truncate text-gray-800">{poi.name}</h4>
                   <div className="flex justify-between items-center mt-2">
-                    <span className="text-[10px] font-bold text-gray-500 bg-white px-2 py-0.5 rounded-md border">{poi.distance} km</span>
+                    <span className="text-[10px] font-bold text-gray-500 bg-white px-2 py-0.5 rounded-md border">{poi.distance} km (Aerial)</span>
                     <span className="text-[10px] font-black text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md transition shadow-sm">GO</span>
                   </div>
                 </div>
