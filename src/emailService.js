@@ -1,17 +1,11 @@
 import emailjs from '@emailjs/browser';
 
 // ── EmailJS Config ─────────────────────────────────────────
-// Set these 3 values in your .env.local file:
-//   VITE_EMAILJS_SERVICE_ID   = your emailjs service id
-//   VITE_EMAILJS_TEMPLATE_ID  = your emailjs template id
-//   VITE_EMAILJS_PUBLIC_KEY   = your emailjs public key
-// ───────────────────────────────────────────────────────────
-const SERVICE_ID  = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
-const PUBLIC_KEY  = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+const SERVICE_ID  = 'service_22llrsr';
+const TEMPLATE_ID = 'template_tevutbj';
+const PUBLIC_KEY  = 'PxiFnAiWW_Uep5cvC';
 
-const IS_CONFIGURED = SERVICE_ID && TEMPLATE_ID && PUBLIC_KEY &&
-  SERVICE_ID !== 'YOUR_SERVICE_ID';
+const IS_CONFIGURED = true;
 
 /**
  * Sends a 6-digit OTP to the given email via EmailJS.
