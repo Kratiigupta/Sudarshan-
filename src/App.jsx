@@ -23,7 +23,22 @@ const translations = {
     dashboard: "Home", profile: "My Profile", travelInfo: "Travel Itinerary", emergency: "Emergency Contacts",
     alerts: "Safety Alerts", notifications: "Notifications", changePass: "Change Password", settings: "Settings", logout: "Log Out", deleteAcc: "Account Delete",
     weather: "Weather & Temp", crowd: "Crowd Density", hotel: "Accommodation", travelAlerts: "TRAVEL ALERTS",
-    distance: "Distance:", timeToReach: "Est. Time:", globalMonitoring: "🌍 Global Geo-Spatial Monitoring", autoFir: "🚨 Auto E-FIR & Alerts"
+    distance: "Distance:", timeToReach: "Est. Time:", globalMonitoring: "🌍 Global Geo-Spatial Monitoring", autoFir: "🚨 Auto E-FIR & Alerts",
+    welcome: "Welcome", aiCompanion: "Your AI Safety Companion is active and monitoring.",
+    safetyInsight: "Safety Insight:", optimal: "✅ Optimal Conditions", caution: "⚠️ Exercise Caution",
+    estCrowd: "Est. Crowd Activity", temporal: "Temporal prediction",
+    battery: "Battery", autoSosActive: "⚠️ Auto-SOS Active",
+    aiMovement: "AI Movement Pattern Analysis", normalBehavior: "Normal Behavior Verified",
+    normalDesc: "Historical patterns match expected itinerary. No drops or deviations detected.",
+    instantSos: "🚨 Instant SOS", instantSosDesc: "Confirm with biometric, then sends live location (PIN if unavailable)",
+    instantSosBusy: "⏳ Confirming biometric…", instantSosBusyDesc: "Complete fingerprint / face / device prompt",
+    liveMap: "Live Geo-Spatial Map", find: "Find:", hospitals: "🏥 Hospitals", police: "🚓 Police",
+    gamesZone: "GAMES ZONE", hold: "HOLD",
+    sosTriggered: "SOS TRIGGERED", sosTriggeredDesc1: "Authorities and emergency contacts have been alerted.", sosTriggeredDesc2: "Stay calm. Help is on the way.",
+    logoutPrompt: "Logout?", no: "No", yes: "Yes",
+    cancel: "CANCEL", confirm: "CONFIRM", cancelSos: "CANCEL SOS",
+    emergencyReq: "Emergency Request", emergencyReqDesc: "Select the authority you need immediate help from:",
+    travelNews: "Travel News"
   },
   hi: {
     touristApp: "📱 यात्री ऐप", policeRoom: "🖥️ पुलिस कंट्रोल ROOM", sos: "🚨 आपातकाल",
@@ -31,7 +46,22 @@ const translations = {
     dashboard: "होम", profile: "मेरी प्रोफाइल", travelInfo: "यात्रा विवरण", emergency: "आपातकालीन संपर्क",
     alerts: "सुरक्षा अलर्ट", notifications: "सूचनाएं", changePass: "पासवर्ड बदलें", settings: "सेटिंग्स", logout: "लॉग आउट", deleteAcc: "खाता हटाएं",
     weather: "मौसम और तापमान", crowd: "भीड़ का घनत्व", hotel: "होटल विवरण", travelAlerts: "यात्रा अलर्ट",
-    distance: "दूरी:", timeToReach: "अनुमानित समय:", globalMonitoring: "🌍 वैश्विक भू-स्थानिक निगरानी", autoFir: "🚨 ऑटो ई-एफआईआर और अलर्ट"
+    distance: "दूरी:", timeToReach: "अनुमानित समय:", globalMonitoring: "🌍 वैश्विक भू-स्थानिक निगरानी", autoFir: "🚨 ऑटो ई-एफआईआर और अलर्ट",
+    welcome: "स्वागत है", aiCompanion: "आपका AI सुरक्षा साथी सक्रिय है और निगरानी कर रहा है।",
+    safetyInsight: "सुरक्षा जानकारी:", optimal: "✅ इष्टतम स्थितियां", caution: "⚠️ सावधानी बरतें",
+    estCrowd: "अनुमानित भीड़", temporal: "समय अनुमान",
+    battery: "बैटरी", autoSosActive: "⚠️ ऑटो-SOS सक्रिय",
+    aiMovement: "AI मूवमेंट पैटर्न विश्लेषण", normalBehavior: "सामान्य व्यवहार सत्यापित",
+    normalDesc: "ऐतिहासिक पैटर्न अपेक्षित यात्रा कार्यक्रम से मेल खाते हैं। कोई विचलन नहीं।",
+    instantSos: "🚨 तुरंत SOS", instantSosDesc: "बायोमेट्रिक से पुष्टि करें, फिर लाइव लोकेशन भेजें",
+    instantSosBusy: "⏳ पुष्टि कर रहा है…", instantSosBusyDesc: "फ़िंगरप्रिंट / फेस प्रॉम्प्ट पूरा करें",
+    liveMap: "लाइव भू-स्थानिक मानचित्र", find: "खोजें:", hospitals: "🏥 अस्पताल", police: "🚓 पुलिस",
+    gamesZone: "गेम्स ज़ोन", hold: "दबाए रखें",
+    sosTriggered: "SOS भेजा गया", sosTriggeredDesc1: "अधिकारियों और आपातकालीन संपर्कों को सतर्क कर दिया गया है।", sosTriggeredDesc2: "शांत रहें। मदद रास्ते में है।",
+    logoutPrompt: "लॉग आउट करें?", no: "नहीं", yes: "हाँ",
+    cancel: "रद्द करें", confirm: "पुष्टि करें", cancelSos: "SOS रद्द करें",
+    emergencyReq: "आपातकालीन अनुरोध", emergencyReqDesc: "उस प्राधिकरण का चयन करें जिससे आपको तत्काल सहायता चाहिए:",
+    travelNews: "यात्रा समाचार"
   }
 };
 
@@ -477,7 +507,7 @@ function App() {
     localStorage.removeItem('sudarshan_auth'); localStorage.removeItem('sudarshan_role'); localStorage.removeItem('sudarshan_user');
   };
 
-  if (!isLoggedIn) return <AuthPage onLogin={handleLoginSuccess} />;
+  if (!isLoggedIn) return <AuthPage onLogin={handleLoginSuccess} isDark={appSettings.darkMode} />;
 
   const isDark = appSettings.darkMode;
   const severeAlerts = disasters.filter((d) => d.level === 'Red' || d.level === 'Orange').length;
@@ -523,7 +553,7 @@ function App() {
               </>
             )}
             <button onClick={() => setActiveView('alerts')} className={getMenuClass('alerts')}><ShieldAlert size={20}/> {t.alerts}</button>
-            <button onClick={() => setActiveView('travelNews')} className={getMenuClass('travelNews')}><Newspaper size={20}/> Travel News</button>
+            <button onClick={() => setActiveView('travelNews')} className={getMenuClass('travelNews')}><Newspaper size={20}/> {t.travelNews}</button>
             <button onClick={() => setActiveView('settings')} className={getMenuClass('settings')}><Settings size={20}/> {t.settings}</button>
             <button onClick={() => setShowLogoutModal(true)} className={`w-full flex items-center gap-3 p-3 font-bold rounded-xl mt-4 transition-all ${isDark ? 'text-red-400 hover:bg-red-900/30' : 'text-red-500 hover:bg-red-50'}`}><LogOut size={20}/> {t.logout}</button>
           </div>
@@ -557,7 +587,7 @@ function App() {
                 style={{ width: `${sosHoldProgress}%` }}
               />
               <span className="relative z-10">
-                {sosHoldProgress > 0 ? `HOLD ${Math.max(1, Math.ceil((100 - sosHoldProgress) / 50))}s` : t.sos}
+                {sosHoldProgress > 0 ? `${t.hold} ${Math.max(1, Math.ceil((100 - sosHoldProgress) / 50))}s` : t.sos}
               </span>
             </button>
           )}
@@ -569,10 +599,10 @@ function App() {
               {/* TOP ROW: Welcome, Weather, Safety Score */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className={`col-span-1 md:col-span-2 p-8 rounded-3xl shadow-sm border relative overflow-hidden flex flex-col justify-center ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-                  <h1 className={`text-3xl font-black mb-2 ${isDark ? 'text-white' : 'text-blue-900'}`}>Welcome, {userProfile?.name ? userProfile.name.split(' ')[0] : 'Traveler'}!</h1>
-                  <p className={`font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Your AI Safety Companion is active and monitoring.</p>
+                  <h1 className={`text-3xl font-black mb-2 ${isDark ? 'text-white' : 'text-blue-900'}`}>{t.welcome}, {userProfile?.name ? userProfile.name.split(' ')[0] : 'Traveler'}!</h1>
+                  <p className={`font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{t.aiCompanion}</p>
                   <p className={`text-xs mt-3 font-bold uppercase tracking-wider ${isDark ? 'text-slate-500' : 'text-gray-500'}`}>
-                    Safety Insight: {safetyReason}
+                    {t.safetyInsight} {safetyReason}
                   </p>
                 </div>
 
@@ -589,11 +619,11 @@ function App() {
 
                 <div className={`p-6 rounded-3xl shadow-sm border flex flex-col justify-center relative overflow-hidden ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-transparent'}`}>
                   <Activity size={100} className="absolute -right-4 -bottom-4 opacity-10" />
-                  <span className="text-[10px] uppercase font-bold tracking-widest opacity-80 mb-2">AI Safety Score</span>
+                  <span className="text-[10px] uppercase font-bold tracking-widest opacity-80 mb-2">{t.safetyScoreTitle}</span>
                   <div className="text-4xl font-black flex items-baseline gap-1">
                     {safetyScore} <span className="text-sm font-bold opacity-70">/ 100</span>
                   </div>
-                  <div className="text-xs font-bold mt-2 opacity-90">{isAreaSafe ? '✅ Optimal Conditions' : '⚠️ Exercise Caution'}</div>
+                  <div className="text-xs font-bold mt-2 opacity-90">{isAreaSafe ? t.optimal : t.caution}</div>
                 </div>
               </div>
 
@@ -602,9 +632,9 @@ function App() {
                 <div className={`p-5 rounded-3xl shadow-sm border flex items-center gap-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
                   <Users size={28} className={crowdLevel.includes('High') ? 'text-red-500' : crowdLevel.includes('Moderate') ? 'text-yellow-500' : 'text-green-500'} />
                   <div>
-                    <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>Est. Crowd Activity</p>
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>{t.estCrowd}</p>
                     <p className={`text-sm font-black ${crowdLevel.includes('High') ? 'text-red-500' : crowdLevel.includes('Moderate') ? 'text-yellow-500' : 'text-green-500'}`}>{crowdLevel}</p>
-                    <p className="text-[9px] font-bold opacity-50">Temporal prediction</p>
+                    <p className="text-[9px] font-bold opacity-50">{t.temporal}</p>
                   </div>
                 </div>
 
@@ -620,9 +650,9 @@ function App() {
                 <div className={`p-5 rounded-3xl shadow-sm border flex items-center gap-4 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
                   <BatteryWarning size={28} className={batteryLevel <= 20 ? 'text-red-500 animate-pulse' : batteryLevel <= 50 ? 'text-yellow-500' : 'text-green-500'} />
                   <div>
-                    <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>Battery</p>
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>{t.battery}</p>
                     <p className={`text-xl font-black ${batteryLevel <= 20 ? 'text-red-500' : 'text-green-500'}`}>{batteryLevel}%</p>
-                    {batteryLevel <= 10 && <p className="text-[9px] font-bold text-red-400 animate-pulse">⚠️ Auto-SOS Active</p>}
+                    {batteryLevel <= 10 && <p className="text-[9px] font-bold text-red-400 animate-pulse">{t.autoSosActive}</p>}
                   </div>
                 </div>
               </div>
@@ -631,15 +661,15 @@ function App() {
               <div className={`p-4 rounded-3xl border ${anomalyFlags.length > 0 ? (isDark ? 'border-red-800 bg-red-900/10' : 'border-red-300 bg-red-50') : (isDark ? 'border-emerald-800 bg-emerald-900/10' : 'border-emerald-300 bg-emerald-50')}`}>
                 <div className="flex items-center gap-2 mb-3">
                   <MapPinOff size={20} className={anomalyFlags.length > 0 ? "text-red-500" : "text-emerald-500"} />
-                  <h3 className={`text-sm font-black uppercase tracking-widest ${anomalyFlags.length > 0 ? 'text-red-600' : 'text-emerald-600'}`}>AI Movement Pattern Analysis</h3>
+                  <h3 className={`text-sm font-black uppercase tracking-widest ${anomalyFlags.length > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{t.aiMovement}</h3>
                 </div>
                 
                 {anomalyFlags.length === 0 ? (
                   <div className={`flex items-center gap-3 p-3 rounded-xl mb-2 ${isDark ? 'bg-emerald-900/20' : 'bg-emerald-100'}`}>
                     <ShieldCheck size={16} className="text-emerald-600" />
                     <div>
-                      <p className={`text-xs font-black uppercase text-emerald-600`}>Normal Behavior Verified</p>
-                      <p className={`text-[11px] font-medium ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>Historical patterns match expected itinerary. No drops or deviations detected.</p>
+                      <p className={`text-xs font-black uppercase text-emerald-600`}>{t.normalBehavior}</p>
+                      <p className={`text-[11px] font-medium ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>{t.normalDesc}</p>
                     </div>
                   </div>
                 ) : (
@@ -663,11 +693,11 @@ function App() {
                   disabled={sosBioBusy}
                   className="w-full rounded-2xl py-4 px-4 bg-red-600 text-white font-black shadow-lg hover:bg-red-700 transition disabled:opacity-60 disabled:cursor-wait"
                 >
-                  {sosBioBusy ? "⏳ Confirming biometric…" : "🚨 Instant SOS"}
+                  {sosBioBusy ? t.instantSosBusy : t.instantSos}
                   <div className="text-[10px] font-bold opacity-80 mt-1">
                     {sosBioBusy
-                      ? "Complete fingerprint / face / device prompt"
-                      : "Confirm with biometric, then sends live location (PIN if unavailable)"}
+                      ? t.instantSosBusyDesc
+                      : t.instantSosDesc}
                   </div>
                 </button>
               </div>
@@ -676,9 +706,9 @@ function App() {
               <div className="grid grid-cols-1 gap-6">
                 <div className="flex flex-col gap-4">
                   <div className="flex justify-between items-end">
-                    <h2 className={`font-black text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>Live Geo-Spatial Map</h2>
+                    <h2 className={`font-black text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>{t.liveMap}</h2>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Find:</span>
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{t.find}</span>
                       <button 
                         onClick={() => {
                           setPoiType('');
@@ -686,7 +716,7 @@ function App() {
                         }} 
                         className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all ${poiType === 'Hospitals' ? 'bg-red-600 text-white' : (isDark ? 'bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50')}`}
                       >
-                        🏥 Hospitals
+                        {t.hospitals}
                       </button>
                       <button 
                         onClick={() => {
@@ -695,7 +725,7 @@ function App() {
                         }} 
                         className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all ${poiType === 'Police' ? 'bg-blue-600 text-white' : (isDark ? 'bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50')}`}
                       >
-                        🚓 Police
+                        {t.police}
                       </button>
                     </div>
                   </div>
@@ -727,7 +757,7 @@ function App() {
             </marquee>
           </div>
           <div className="p-4 flex justify-between items-center max-w-7xl mx-auto">
-            <button onClick={() => setShowMiniGames(true)} className="flex items-center gap-2 font-black text-xs text-indigo-600"><Gamepad2 size={16}/> GAMES ZONE</button>
+            <button onClick={() => setShowMiniGames(true)} className="flex items-center gap-2 font-black text-xs text-indigo-600"><Gamepad2 size={16}/> {t.gamesZone}</button>
             <RakshaAI weather={weather} location={location} disasters={disasters} isDark={isDark} />
           </div>
         </div>
@@ -748,8 +778,8 @@ function App() {
             />
             {sosError && <p className="text-red-500 font-bold mb-4">{sosError}</p>}
             <div className="flex gap-4">
-              <button onClick={() => setShowSosModal(false)} className={`flex-1 py-3 rounded-xl font-bold transition-all ${isDark ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}>CANCEL</button>
-              <button onClick={() => triggerSOS(false)} className="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700">CONFIRM</button>
+              <button onClick={() => setShowSosModal(false)} className={`flex-1 py-3 rounded-xl font-bold transition-all ${isDark ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}>{t.cancel}</button>
+              <button onClick={() => triggerSOS(false)} className="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700">{t.confirm}</button>
             </div>
           </div>
         </div>
@@ -758,15 +788,15 @@ function App() {
       {showSosTargetModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[10000] backdrop-blur-sm animate-fade-in">
           <div className={`rounded-3xl p-8 max-w-sm w-full text-center border-4 border-red-600 ${isDark ? 'bg-slate-900' : 'bg-white'}`}>
-            <h2 className="text-2xl font-black text-red-600 mb-2 uppercase">Emergency Request</h2>
-            <p className="text-sm font-bold opacity-70 mb-6">Select the authority you need immediate help from:</p>
+            <h2 className="text-2xl font-black text-red-600 mb-2 uppercase">{t.emergencyReq}</h2>
+            <p className="text-sm font-bold opacity-70 mb-6">{t.emergencyReqDesc}</p>
             <div className="grid grid-cols-2 gap-3 mb-6">
                <button onClick={() => triggerSOS(true, 'Police')} className="p-4 rounded-xl bg-blue-100 text-blue-700 font-black hover:bg-blue-200 transition">🚓 POLICE</button>
                <button onClick={() => triggerSOS(true, 'Medical')} className="p-4 rounded-xl bg-red-100 text-red-700 font-black hover:bg-red-200 transition">🚑 MEDICAL</button>
                <button onClick={() => triggerSOS(true, 'Fire')} className="p-4 rounded-xl bg-orange-100 text-orange-700 font-black hover:bg-orange-200 transition">🔥 FIRE</button>
                <button onClick={() => triggerSOS(true, 'NDRF')} className="p-4 rounded-xl bg-yellow-100 text-yellow-800 font-black hover:bg-yellow-200 transition">🚁 NDRF</button>
             </div>
-            <button onClick={() => setShowSosTargetModal(false)} className={`w-full py-3 rounded-xl font-bold transition-all ${isDark ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}>CANCEL SOS</button>
+            <button onClick={() => setShowSosTargetModal(false)} className={`w-full py-3 rounded-xl font-bold transition-all ${isDark ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}>{t.cancelSos}</button>
           </div>
         </div>
       )}
@@ -775,9 +805,9 @@ function App() {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[10000] backdrop-blur-sm animate-fade-in">
           <div className="bg-red-600 text-white rounded-3xl p-8 max-w-md w-full text-center border-4 border-red-800 shadow-2xl animate-bounce">
             <AlertTriangle size={60} className="mx-auto mb-4" />
-            <h2 className="text-3xl font-black mb-2">SOS TRIGGERED</h2>
-            <p className="text-lg font-bold opacity-90">Authorities and emergency contacts have been alerted.</p>
-            <p className="text-sm mt-4 opacity-75">Stay calm. Help is on the way.</p>
+            <h2 className="text-3xl font-black mb-2">{t.sosTriggered}</h2>
+            <p className="text-lg font-bold opacity-90">{t.sosTriggeredDesc1}</p>
+            <p className="text-sm mt-4 opacity-75">{t.sosTriggeredDesc2}</p>
           </div>
         </div>
       )}
@@ -785,10 +815,10 @@ function App() {
       {showLogoutModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-[10000] backdrop-blur-sm">
           <div className={`rounded-3xl p-8 text-center max-w-sm w-full shadow-2xl border ${isDark ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
-            <h2 className="text-2xl font-black mb-4">Logout?</h2>
+            <h2 className="text-2xl font-black mb-4">{t.logoutPrompt}</h2>
             <div className="flex gap-4 mt-6">
-              <button onClick={() => setShowLogoutModal(false)} className={`flex-1 py-3 rounded-xl font-bold transition-all ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>No</button>
-              <button onClick={handleLogout} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-red-600/30">Yes</button>
+              <button onClick={() => setShowLogoutModal(false)} className={`flex-1 py-3 rounded-xl font-bold transition-all ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{t.no}</button>
+              <button onClick={handleLogout} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-red-600/30">{t.yes}</button>
             </div>
           </div>
         </div>
