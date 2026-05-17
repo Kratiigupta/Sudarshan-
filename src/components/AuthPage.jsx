@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Shield, User, Lock, Upload, ArrowRight, Building, CheckCircle2, Loader2, Fingerprint, AlertTriangle, Mail, Phone } from 'lucide-react';
+import { Shield, User, Lock, Upload, ArrowRight, Building, CheckCircle2, Loader2, Fingerprint, AlertTriangle, Mail, Phone, Eye, EyeOff } from 'lucide-react';
 import { authSignIn, authChangePassword, getCurrentUser, updateProfile, generateAndStoreOtp, verifyStoredOtp, registerNewUser } from '../supabase';
 import { sendOtpViaEmail } from '../emailService';
 
@@ -21,6 +21,7 @@ const AuthPage = ({ onLogin, isDark }) => {
 
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleOtpChange = (index, value) => {
     if (isNaN(value)) return;
@@ -206,9 +207,9 @@ const AuthPage = ({ onLogin, isDark }) => {
 
     // Step A: Generate & store OTP in Supabase DB
     const { otp, error: otpGenError } = await generateAndStoreOtp(formData.email);
-    setIsUploadingKyc(false);
 
     if (otpGenError) {
+      setIsUploadingKyc(false);
       setError(`❌ Failed to generate OTP. Please check your internet connection and try again.`);
       return;
     }
@@ -231,6 +232,7 @@ const AuthPage = ({ onLogin, isDark }) => {
       setError(`🛠️ DEV MODE — OTP not emailed. Check browser console for your OTP code.`);
     }
 
+    setIsUploadingKyc(false);
     setView('otp');
   };
 
@@ -388,7 +390,10 @@ const AuthPage = ({ onLogin, isDark }) => {
                 </div>
                 <div className="relative">
                   <Lock className={`absolute left-3 top-3 ${isDark ? 'text-slate-400' : 'text-gray-400'}`} size={20} />
-                  <input type="password" onChange={(e) => setFormData({...formData, password: e.target.value})} className={`w-full border-2 rounded-xl py-3 pl-10 pr-4 focus:border-blue-500 outline-none font-medium transition-colors ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-gray-50 border-gray-200 text-gray-900'}`} placeholder="Enter Password" />
+                  <input type={showPassword ? "text" : "password"} onChange={(e) => setFormData({...formData, password: e.target.value})} className={`w-full border-2 rounded-xl py-3 pl-10 pr-12 focus:border-blue-500 outline-none font-medium transition-colors ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-gray-50 border-gray-200 text-gray-900'}`} placeholder="Enter Password" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className={`absolute right-3 top-3 ${isDark ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-600'}`}>
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
                 </div>
               </div>
 
@@ -436,12 +441,15 @@ const AuthPage = ({ onLogin, isDark }) => {
                   <div className="relative">
                     <Shield className="absolute left-3 top-3.5 text-blue-500" size={20} />
                     <input 
-                      type="password" 
+                      type={showPassword ? "text" : "password"} 
                       placeholder="Official Access Code" 
                       value={formData.adminCode} 
                       onChange={(e) => setFormData({...formData, adminCode: e.target.value})} 
-                      className={`w-full border-2 rounded-xl p-3 pl-10 focus:border-blue-500 outline-none font-bold transition-colors ${isDark ? 'bg-blue-900/30 border-blue-800 text-blue-300 placeholder-blue-500' : 'bg-blue-50 border-blue-200 text-blue-900'}`} 
+                      className={`w-full border-2 rounded-xl p-3 pl-10 pr-12 focus:border-blue-500 outline-none font-bold transition-colors ${isDark ? 'bg-blue-900/30 border-blue-800 text-blue-300 placeholder-blue-500' : 'bg-blue-50 border-blue-200 text-blue-900'}`} 
                     />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className={`absolute right-3 top-3.5 ${isDark ? 'text-blue-400 hover:text-blue-200' : 'text-blue-500 hover:text-blue-700'}`}>
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
                   </div>
                 </div>
               )}
@@ -581,12 +589,18 @@ const AuthPage = ({ onLogin, isDark }) => {
 
               <div className="relative">
                  <Lock className={`absolute left-3 top-3.5 ${isDark ? 'text-slate-400' : 'text-gray-400'}`} size={20} />
-                 <input type="password" placeholder="Create 6-digit PIN / Password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className={`w-full border-2 rounded-xl p-3 pl-10 focus:border-blue-500 outline-none font-medium transition-colors ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
+                 <input type={showPassword ? "text" : "password"} placeholder="Create 6-digit PIN / Password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} className={`w-full border-2 rounded-xl p-3 pl-10 pr-12 focus:border-blue-500 outline-none font-medium transition-colors ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
+                 <button type="button" onClick={() => setShowPassword(!showPassword)} className={`absolute right-3 top-3.5 ${isDark ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-600'}`}>
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                 </button>
               </div>
               
               <div className="relative mt-4">
                  <Lock className={`absolute left-3 top-3.5 ${isDark ? 'text-slate-400' : 'text-gray-400'}`} size={20} />
-                 <input type="password" placeholder="Confirm PIN" value={formData.confirmPassword} onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} className={`w-full border-2 rounded-xl p-3 pl-10 focus:border-blue-500 outline-none font-medium transition-colors ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
+                 <input type={showPassword ? "text" : "password"} placeholder="Confirm PIN" value={formData.confirmPassword} onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})} className={`w-full border-2 rounded-xl p-3 pl-10 pr-12 focus:border-blue-500 outline-none font-medium transition-colors ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' : 'bg-gray-50 border-gray-200 text-gray-900'}`} />
+                 <button type="button" onClick={() => setShowPassword(!showPassword)} className={`absolute right-3 top-3.5 ${isDark ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-600'}`}>
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                 </button>
               </div>
 
               <button type="submit" className="w-full bg-green-600 text-white font-bold py-3.5 mt-6 rounded-xl shadow-lg hover:bg-green-700 transition flex justify-center gap-2 items-center">

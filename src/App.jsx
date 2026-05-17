@@ -13,7 +13,7 @@ import AuthPage from './components/AuthPage';
 import PolicePanel from './components/PolicePanel';
 import History from './components/History';
 import TravelNews from './components/TravelNews';
-import { authSignOut, createIncident } from './supabase';
+import { authSignOut, createIncident, deleteUserProfile } from './supabase';
 import { Menu, X, User, Lock, Trash2, Phone, Settings, Gamepad2, AlertTriangle, Briefcase, Bell, LogOut, CloudSun, Users, Building, Home, Navigation, Activity, ShieldAlert, ShieldCheck, Clock, Newspaper, Watch, BatteryWarning, MapPinOff, Hotel } from 'lucide-react';
 
 const translations = {
@@ -507,6 +507,15 @@ function App() {
     localStorage.removeItem('sudarshan_auth'); localStorage.removeItem('sudarshan_role'); localStorage.removeItem('sudarshan_user');
   };
 
+  const handleDeleteAccount = async () => {
+    if (userProfile?.supabaseId) {
+      await deleteUserProfile(userProfile.supabaseId);
+    }
+    await handleLogout();
+    setShowDeleteModal(false);
+    alert("Account successfully deleted.");
+  };
+
   if (!isLoggedIn) return <AuthPage onLogin={handleLoginSuccess} isDark={appSettings.darkMode} />;
 
   const isDark = appSettings.darkMode;
@@ -819,6 +828,20 @@ function App() {
             <div className="flex gap-4 mt-6">
               <button onClick={() => setShowLogoutModal(false)} className={`flex-1 py-3 rounded-xl font-bold transition-all ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>{t.no}</button>
               <button onClick={handleLogout} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-red-600/30">{t.yes}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-[10000] backdrop-blur-sm">
+          <div className={`rounded-3xl p-8 text-center max-w-sm w-full shadow-2xl border border-red-500 ${isDark ? 'bg-slate-900 text-white' : 'bg-white text-gray-900'}`}>
+            <AlertTriangle size={50} className="mx-auto mb-4 text-red-500" />
+            <h2 className="text-2xl font-black mb-2 text-red-500">Delete Account?</h2>
+            <p className={`text-sm mb-6 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>This action is permanent and cannot be undone. All your data will be wiped.</p>
+            <div className="flex gap-4">
+              <button onClick={() => setShowDeleteModal(false)} className={`flex-1 py-3 rounded-xl font-bold transition-all ${isDark ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>Cancel</button>
+              <button onClick={handleDeleteAccount} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-red-600/30">Delete</button>
             </div>
           </div>
         </div>

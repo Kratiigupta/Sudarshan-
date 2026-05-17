@@ -268,6 +268,20 @@ export const getProfile = async (userId) => {
   }
 };
 
+export const deleteUserProfile = async (userId) => {
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+
+    if (error) throw error;
+    return { error: null };
+  } catch (error) {
+    return { error };
+  }
+};
+
 // ============================================
 // 🗺️ Travel Itineraries
 // ============================================
