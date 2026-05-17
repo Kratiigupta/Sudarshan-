@@ -75,6 +75,8 @@ const AuthPage = ({ onLogin, isDark }) => {
           supabaseId: data.user.id,
           role: data.profile.role,
         };
+        localStorage.setItem('sudarshan_bio_email', formData.email);
+        localStorage.setItem('sudarshan_bio_pass', btoa(formData.password));
         onLogin(userData, data.profile.role);
       } else {
         // Profile missing but auth succeeded - default to tourist if no role found
@@ -87,12 +89,73 @@ const AuthPage = ({ onLogin, isDark }) => {
           avatar: null,
           supabaseId: data.user.id,
         };
+        localStorage.setItem('sudarshan_bio_email', formData.email);
+        localStorage.setItem('sudarshan_bio_pass', btoa(formData.password));
         onLogin(userData, 'tourist');
       }
     } catch (err) {
       setError(`❌ Login failed: ${err?.message || 'Invalid credentials.'}`);
     }
     setIsLoading(false);
+  };
+
+  const handleBiometricLogin = async () => {
+    const savedEmail = localStorage.getItem('sudarshan_bio_email');
+    const savedPass = localStorage.getItem('sudarshan_bio_pass');
+
+    if (!savedEmail || !savedPass) {
+      setError("No Digital ID linked. Please login with your password once to enable Biometrics.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError('');
+      if (window.PublicKeyCredential) {
+        const challenge = new Uint8Array(32);
+        window.crypto.getRandomValues(challenge);
+
+        // Trigger OS-level Biometric / FaceID / TouchID Prompt
+        await navigator.credentials.create({
+          publicKey: {
+            challenge: challenge,
+            rp: { name: "Sudarshan Digital ID" },
+            user: { id: new Uint8Array(16), name: savedEmail, displayName: "Verified Tourist" },
+            pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+            authenticatorSelection: { userVerification: "required" },
+            timeout: 60000
+          }
+        });
+
+        // Biometric passed, automatically authenticate with Supabase
+        const { data, error: authError } = await authSignIn(savedEmail, atob(savedPass));
+        if (authError) throw authError;
+        
+        if (data?.profile) {
+          const userData = {
+            name: data.profile.name || 'User',
+            id: data.profile.digital_id || (data.profile.role === 'police' ? 'ADMIN-ID' : 'Pending'),
+            phone: data.profile.phone || '',
+            email: data.user.email,
+            pin: atob(savedPass), 
+            avatar: data.profile.avatar_url || null,
+            supabaseId: data.user.id,
+            role: data.profile.role,
+          };
+          onLogin(userData, data.profile.role);
+        } else {
+          onLogin({ name: data.user.email.split('@')[0], id: 'Pending', email: data.user.email, supabaseId: data.user.id }, 'tourist');
+        }
+
+      } else {
+        setError("Biometric hardware is not supported on this browser/device.");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Biometric verification canceled or failed.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // ==========================================
@@ -333,7 +396,7 @@ const AuthPage = ({ onLogin, isDark }) => {
                 <button type="submit" disabled={isLoading} className={`flex-1 text-white font-bold py-3.5 rounded-xl shadow-lg transition flex justify-center items-center gap-2 ${role === 'police' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-blue-600 hover:bg-blue-700'} disabled:opacity-70`}>
                   {isLoading ? <Loader2 className="animate-spin" /> : <><Lock size={18}/> Login Securely</>}
                 </button>
-                <button type="button" onClick={() => alert("Biometric login coming soon...")} className={`p-3.5 rounded-xl border transition flex items-center justify-center ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600 hover:text-blue-400' : 'bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200 hover:text-blue-600'}`} title="Biometric Login">
+                <button type="button" onClick={handleBiometricLogin} disabled={isLoading} className={`p-3.5 rounded-xl border transition flex items-center justify-center ${isDark ? 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600 hover:text-blue-400' : 'bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200 hover:text-blue-600'} disabled:opacity-50`} title="Biometric Login">
                   <Fingerprint size={24} />
                 </button>
               </div>
