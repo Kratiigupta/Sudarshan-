@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Shield, User, Lock, Upload, ArrowRight, Building, CheckCircle2, Loader2, Fingerprint, AlertTriangle, Mail, Phone } from 'lucide-react';
-import { authSignIn, authChangePassword, getCurrentUser, updateProfile, sendOtpEmail, verifyOtpEmail } from '../supabase';
+import { authSignIn, authChangePassword, getCurrentUser, updateProfile, generateAndStoreOtp, verifyStoredOtp, registerNewUser } from '../supabase';
+import { sendOtpViaEmail } from '../emailService';
 
 const AuthPage = ({ onLogin }) => {
   const [view, setView] = useState('login'); 
@@ -122,7 +123,7 @@ const AuthPage = ({ onLogin }) => {
   };
 
   // ==========================================
-  // 3. REGISTRATION STEP 2: KYC UPLOAD & SEND REAL OTP
+  // 3. REGISTRATION STEP 2: KYC UPLOAD & SEND OTP
   // ==========================================
   const handleKycUpload = async (e) => {
     e.preventDefault();
@@ -131,28 +132,47 @@ const AuthPage = ({ onLogin }) => {
     }
     setError('');
     setIsUploadingKyc(true);
+
+    // Simulate KYC processing animation
     let prog = 0;
     const interval = setInterval(() => {
       prog += 20;
       setKycProgress(prog);
-      if (prog >= 100) {
-        clearInterval(interval);
-      }
+      if (prog >= 100) clearInterval(interval);
     }, 200);
 
-    // Send Real OTP via Email
-    const { error: otpError } = await sendOtpEmail(formData.email, true);
+    // Step A: Generate & store OTP in Supabase DB
+    const { otp, error: otpGenError } = await generateAndStoreOtp(formData.email);
     setIsUploadingKyc(false);
-    
-    if (otpError) {
-      setError(`Failed to send OTP to ${formData.email}: ${otpError.message}`);
-    } else {
-      setView('otp');
+
+    if (otpGenError) {
+      setError(`❌ Failed to generate OTP. Please check your internet connection and try again.`);
+      return;
     }
+
+    // Step B: Send OTP via EmailJS
+    const { success, devMode } = await sendOtpViaEmail(
+      formData.email,
+      otp,
+      formData.name,
+      role
+    );
+
+    if (!success) {
+      setError(`❌ Could not send OTP email. Please verify your email address and try again.`);
+      return;
+    }
+
+    if (devMode) {
+      // In dev mode, show OTP directly on screen for testing
+      setError(`🛠️ DEV MODE — OTP not emailed. Check browser console for your OTP code.`);
+    }
+
+    setView('otp');
   };
 
   // ==========================================
-  // 4. REGISTRATION STEP 3: OTP VERIFY (REAL)
+  // 4. REGISTRATION STEP 3: OTP VERIFY
   // ==========================================
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
@@ -163,11 +183,13 @@ const AuthPage = ({ onLogin }) => {
     
     setIsLoading(true);
     const token = otp.join('');
-    const { error: verifyError } = await verifyOtpEmail(formData.email, token);
+
+    // Verify against our Supabase otp_verifications table
+    const { valid, error: verifyError } = await verifyStoredOtp(formData.email, token);
     setIsLoading(false);
 
-    if (verifyError) {
-      setError(`Invalid OTP: ${verifyError.message}`);
+    if (!valid) {
+      setError(verifyError?.message || 'Invalid OTP. Please try again.');
     } else {
       setView('password');
     }
@@ -195,31 +217,31 @@ const AuthPage = ({ onLogin }) => {
         ? 'POLICE-' + Math.floor(Math.random() * 9000 + 1000)
         : 'SU-' + Math.floor(Math.random() * 900000 + 100000);
 
-      // Set password for the authenticated user
-      const { error: passError } = await authChangePassword(formData.password);
-      if (passError) throw passError;
+      // ── Step 1: Create Supabase Auth account (email + password) ──────────
+      // Our custom OTP already verified email ownership, so we register directly.
+      const { data: authData, error: authError } = await registerNewUser(
+        formData.email,
+        formData.password
+      );
+      if (authError) throw authError;
+      if (!authData?.user) throw new Error('Account creation failed. Please try again.');
 
-      // Update profile with all data
-      const { user, error: userError } = await getCurrentUser();
-      if (userError || !user) throw new Error("Could not find authenticated user.");
-
-      const { error: profileError } = await updateProfile(user.id, {
-        name: formData.name,
-        phone: formData.phone,
-        dob: formData.dob || null,
-        address: formData.address || null,
+      // ── Step 2: Save profile to DB ────────────────────────────────────────
+      const { error: profileError } = await updateProfile(authData.user.id, {
+        name:       formData.name,
+        phone:      formData.phone,
+        dob:        formData.dob || null,
+        address:    formData.address || null,
         digital_id: newId,
-        role: role,
-        station: role === 'police' ? formData.station : null,
+        role:       role,
+        station:    role === 'police' ? formData.station : null,
       });
 
       if (profileError) throw profileError;
 
       setGeneratedId(newId);
-      setRegisteredUserId(user.id);
-      setTimeout(() => {
-        setView('success'); 
-      }, 2500);
+      setRegisteredUserId(authData.user.id);
+      setTimeout(() => { setView('success'); }, 2000);
 
     } catch (err) {
       setError("❌ Registration Failed: " + (err?.message || 'Unknown error'));
@@ -426,15 +448,28 @@ const AuthPage = ({ onLogin }) => {
                 <div className="w-8 h-2 bg-blue-600 rounded-full"></div>
                 <div className="w-2 h-2 bg-gray-200 rounded-full"></div>
               </div>
-              <h2 className="text-2xl font-bold text-gray-800">Step 3: Enter OTP</h2>
-              <p className="text-gray-500 text-sm mb-6">We've sent a secure 6-digit code to <br/><span className="font-bold text-gray-800">{formData.email}</span></p>
-              
-              <div className="flex justify-center gap-2 mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">Step 3: Verify OTP</h2>
+
+              {/* Email icon + address */}
+              <div className="flex flex-col items-center gap-1">
+                <div className="bg-blue-100 p-3 rounded-full"><Mail size={24} className="text-blue-600" /></div>
+                <p className="text-gray-500 text-sm">6-digit code sent to</p>
+                <p className="font-bold text-gray-800 text-sm">{formData.email}</p>
+                <p className="text-[11px] text-gray-400 mt-1">⏱ OTP valid for 10 minutes &nbsp;|&nbsp; Check spam if not received</p>
+              </div>
+
+              {/* OTP inputs */}
+              <div className="flex justify-center gap-2 my-4">
                 {otp.map((digit, index) => (
-                  <input 
-                    key={index} ref={otpRefs[index]} type="number" value={digit}
-                    onChange={(e) => handleOtpChange(index, e.target.value)}
-                    className="w-14 h-14 text-center text-2xl font-black border-2 border-gray-300 rounded-xl focus:border-blue-600 outline-none bg-gray-50"
+                  <input
+                    key={index}
+                    ref={otpRefs[index]}
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(index, e.target.value.replace(/\D/g, ''))}
+                    className="w-12 h-14 text-center text-2xl font-black border-2 border-gray-300 rounded-xl focus:border-blue-600 outline-none bg-gray-50 transition"
                   />
                 ))}
               </div>
@@ -442,6 +477,28 @@ const AuthPage = ({ onLogin }) => {
               <button type="submit" disabled={isLoading} className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:bg-blue-700 transition flex justify-center gap-2 items-center disabled:opacity-70">
                 {isLoading ? <><Loader2 size={20} className="animate-spin" /> Verifying...</> : <>Verify OTP <ArrowRight size={20}/></>}
               </button>
+
+              {/* Resend OTP */}
+              <p className="text-sm text-gray-500">
+                Didn't receive it?{' '}
+                <button
+                  type="button"
+                  disabled={isLoading}
+                  onClick={async () => {
+                    setError('');
+                    const { otp: newOtp, error: genErr } = await generateAndStoreOtp(formData.email);
+                    if (genErr) { setError('Failed to resend OTP. Try again.'); return; }
+                    const { devMode } = await sendOtpViaEmail(formData.email, newOtp, formData.name, role);
+                    if (devMode) setError('🛠️ DEV MODE — Check console for new OTP.');
+                    else setError('✅ New OTP sent! Please check your inbox.');
+                    setOtp(['', '', '', '', '', '']);
+                    otpRefs[0].current?.focus();
+                  }}
+                  className="text-blue-600 font-bold hover:underline disabled:opacity-50"
+                >
+                  Resend OTP
+                </button>
+              </p>
             </form>
           )}
 

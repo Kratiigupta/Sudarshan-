@@ -21,29 +21,96 @@ export const isSupabaseConfigured = isConfigured;
 // 🔐 Authentication
 // ============================================
 
-export const sendOtpEmail = async (email, isSignUp = false) => {
+// ─── Custom 6-digit OTP (stored in otp_verifications table) ────────────────
+// This is completely independent of Supabase Magic Link settings.
+
+/** Generate a 6-digit OTP, persist it to DB (10 min expiry), and return the code. */
+export const generateAndStoreOtp = async (email) => {
   try {
-    const { data, error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: isSignUp }
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Remove any existing (unused) OTPs for this email first
+    await supabase
+      .from('otp_verifications')
+      .delete()
+      .eq('email', normalizedEmail);
+
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const { error } = await supabase.from('otp_verifications').insert({
+      email: normalizedEmail,
+      otp_code: otpCode,
+      expires_at: expiresAt,
+      used: false,
     });
+
     if (error) throw error;
-    return { data, error: null };
+    return { otp: otpCode, error: null };
   } catch (error) {
-    return { data: null, error };
+    console.error('generateAndStoreOtp error:', error);
+    return { otp: null, error };
   }
 };
 
-export const verifyOtpEmail = async (email, token) => {
+/** Verify the 6-digit OTP from DB. Marks it as used on success. */
+export const verifyStoredOtp = async (email, inputCode) => {
   try {
-    const { data, error } = await supabase.auth.verifyOtp({
-      email,
-      token,
-      type: 'email'
-    });
-    if (error) throw error;
-    return { data, error: null };
+    const normalizedEmail = email.trim().toLowerCase();
+    const { data, error } = await supabase
+      .from('otp_verifications')
+      .select('*')
+      .eq('email', normalizedEmail)
+      .eq('otp_code', inputCode.trim())
+      .eq('used', false)
+      .gt('expires_at', new Date().toISOString())
+      .single();
+
+    if (error || !data) {
+      return { valid: false, error: new Error('Invalid or expired OTP. Please try again.') };
+    }
+
+    // Mark as used so it cannot be replayed
+    await supabase
+      .from('otp_verifications')
+      .update({ used: true })
+      .eq('id', data.id);
+
+    return { valid: true, error: null };
   } catch (error) {
+    return { valid: false, error };
+  }
+};
+
+/**
+ * Creates a new Supabase Auth account (email + password).
+ * After our custom OTP has already verified email ownership,
+ * we skip Supabase's own email confirmation by signing in immediately.
+ */
+export const registerNewUser = async (email, password) => {
+  try {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) throw error;
+
+    // If Supabase returned a session → user is active immediately ✅
+    if (data.session) return { data, error: null };
+
+    // No session means Supabase wants email confirmation.
+    // We've already verified email via our custom OTP, so sign in directly.
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (signInError) {
+      // If sign-in fails (email not confirmed in Supabase settings),
+      // return the user object so the profile can still be created.
+      if (data.user) return { data: { user: data.user, session: null }, error: null };
+      throw signInError;
+    }
+
+    return { data: signInData, error: null };
+  } catch (error) {
+    console.error('registerNewUser error:', error);
     return { data: null, error };
   }
 };
