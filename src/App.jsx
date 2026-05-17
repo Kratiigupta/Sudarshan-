@@ -513,10 +513,10 @@ function App() {
           
           <div className="flex-1 p-4 space-y-2 overflow-y-auto">
             <button onClick={() => setActiveView(userRole === 'police' ? 'police' : 'tourist')} className={getMenuClass(userRole === 'police' ? 'police' : 'tourist')}><Home size={20}/> {t.dashboard}</button>
+            <button onClick={() => setActiveView('profile')} className={getMenuClass('profile')}><User size={20}/> {t.profile}</button>
             {userRole === 'tourist' && (
               <>
                 <button onClick={() => setActiveView('digitalId')} className={getMenuClass('digitalId')}><ShieldCheck size={20}/> Digital ID</button>
-                <button onClick={() => setActiveView('profile')} className={getMenuClass('profile')}><User size={20}/> {t.profile}</button>
                 <button onClick={() => setActiveView('history')} className={getMenuClass('history')}><Clock size={20}/> SOS History</button>
                 <button onClick={() => setActiveView('travelInfo')} className={getMenuClass('travelInfo')}><Briefcase size={20}/> {t.travelInfo}</button>
                 <button onClick={() => setActiveView('emergencyContacts')} className={getMenuClass('emergencyContacts')}><Phone size={20}/> {t.emergency}</button>
@@ -679,8 +679,24 @@ function App() {
                     <h2 className={`font-black text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>Live Geo-Spatial Map</h2>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Find:</span>
-                      <button onClick={() => setPoiType('Hospitals')} className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all ${poiType === 'Hospitals' ? 'bg-red-600 text-white' : (isDark ? 'bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50')}`}>🏥 Hospitals</button>
-                      <button onClick={() => setPoiType('Police')} className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all ${poiType === 'Police' ? 'bg-blue-600 text-white' : (isDark ? 'bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50')}`}>🚓 Police</button>
+                      <button 
+                        onClick={() => {
+                          setPoiType('');
+                          setTimeout(() => setPoiType('Hospitals'), 50);
+                        }} 
+                        className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all ${poiType === 'Hospitals' ? 'bg-red-600 text-white' : (isDark ? 'bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50')}`}
+                      >
+                        🏥 Hospitals
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setPoiType('');
+                          setTimeout(() => setPoiType('Police'), 50);
+                        }} 
+                        className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm transition-all ${poiType === 'Police' ? 'bg-blue-600 text-white' : (isDark ? 'bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50')}`}
+                      >
+                        🚓 Police
+                      </button>
                     </div>
                   </div>
                   

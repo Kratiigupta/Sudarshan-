@@ -21,6 +21,7 @@ const Profile = ({ user, setUser, isDark, userId }) => {
           email: data.email || prev.email,
           dob: data.dob || prev.dob || '',
           address: data.address || prev.address || '',
+          station: data.station || prev.station || '',
           avatar: data.avatar_url || prev.avatar,
         }));
       }
@@ -56,6 +57,7 @@ const Profile = ({ user, setUser, isDark, userId }) => {
         email: formData.email,
         dob: formData.dob || null,
         address: formData.address || null,
+        station: formData.station || null,
         avatar_url: formData.avatar || null,
       });
     }
@@ -120,6 +122,12 @@ const Profile = ({ user, setUser, isDark, userId }) => {
               <label className={`block text-sm font-bold mb-2 flex items-center gap-2 ${isDark ? 'text-slate-300' : 'text-gray-600'}`}><Calendar size={16}/> Date of Birth</label>
               <input type="date" name="dob" value={formData.dob || ''} onChange={handleChange} className={`w-full border-2 rounded-xl p-3 focus:border-blue-500 outline-none font-bold ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'border-gray-200 text-gray-800'}`} />
             </div>
+            {formData.role === 'police' && (
+              <div>
+                <label className={`block text-sm font-bold mb-2 flex items-center gap-2 ${isDark ? 'text-slate-300' : 'text-gray-600'}`}><MapPin size={16}/> Assigned Station</label>
+                <input type="text" name="station" value={formData.station || ''} onChange={handleChange} placeholder="e.g. Sector 12 HQ" className={`w-full border-2 rounded-xl p-3 focus:border-blue-500 outline-none font-bold ${isDark ? 'bg-slate-700 border-slate-600 text-white' : 'border-gray-200 text-gray-800'}`} />
+              </div>
+            )}
           </div>
           <div>
             <label className={`block text-sm font-bold mb-2 flex items-center gap-2 ${isDark ? 'text-slate-300' : 'text-gray-600'}`}><MapPin size={16}/> Residential Address</label>

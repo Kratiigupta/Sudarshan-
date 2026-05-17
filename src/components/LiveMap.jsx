@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, useMap, Polyline } from 'react-leaflet';
-import { Crosshair, MapPin, Navigation } from 'lucide-react';
+import { Crosshair, MapPin, Navigation, Loader2 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -97,6 +97,8 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
     }
   }, [showClusters, currentPosition]);
 
+  const [isPoiLoading, setIsPoiLoading] = useState(false);
+
   // Sync with App.jsx location
   useEffect(() => {
     if (userLocation) {
@@ -107,10 +109,10 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
 
   // Find POIs when poiType changes
   useEffect(() => {
-    if (poiType && userLocation) {
+    if (poiType && currentPosition) {
       findNearbyPOIs(poiType);
     }
-  }, [poiType, userLocation]);
+  }, [poiType, currentPosition]);
 
   // Calculate distance between two lat/lon points
   const getDistance = (lat1, lon1, lat2, lon2) => {
@@ -125,8 +127,19 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
   };
 
   const findNearbyPOIs = async (type) => {
-    const amenity = type === 'Hospitals' ? 'hospital' : type === 'Police' ? 'police' : (type === 'Museums' ? 'museum' : 'park');
-    const query = `[out:json];nwr["amenity"="${amenity}"](around:5000,${currentPosition[0]},${currentPosition[1]});out center;`;
+    setIsPoiLoading(true);
+    let query = '';
+    
+    // Union query to catch both standard amenities and specific local tags
+    if (type === 'Hospitals') {
+      query = `[out:json];(nwr["amenity"~"hospital|clinic|doctors"](around:15000,${currentPosition[0]},${currentPosition[1]}););out center;`;
+    } else if (type === 'Police') {
+      query = `[out:json];(nwr["amenity"="police"](around:15000,${currentPosition[0]},${currentPosition[1]});nwr["police"~"outpost|checkpoint"](around:15000,${currentPosition[0]},${currentPosition[1]}););out center;`;
+    } else if (type === 'Museums') {
+      query = `[out:json];(nwr["amenity"="museum"](around:15000,${currentPosition[0]},${currentPosition[1]}););out center;`;
+    } else {
+      query = `[out:json];(nwr["leisure"="park"](around:15000,${currentPosition[0]},${currentPosition[1]}););out center;`;
+    }
     
     try {
       const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
@@ -135,16 +148,32 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
         const sortedPois = data.elements.map(e => {
           const lat = e.lat || e.center?.lat;
           const lon = e.lon || e.center?.lon;
+          
+          let defaultName = `${type} Facility`;
+          if (type === 'Police') {
+            if (e.tags?.police === 'outpost') defaultName = 'Police Outpost (Chowki)';
+            else if (e.tags?.police === 'checkpoint') defaultName = 'Police Checkpoint';
+            else defaultName = 'Police Station';
+          }
+
           return {
             id: e.id,
             pos: [lat, lon],
-            name: e.tags?.name || `${type} Station`,
+            name: e.tags?.name || defaultName,
             distance: getDistance(currentPosition[0], currentPosition[1], lat, lon)
           };
         }).filter(e => e.pos[0] && e.pos[1]).sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance)).slice(0, 5);
+        
         setNearbyPOIs(sortedPois);
+        if (sortedPois.length === 0) {
+           console.warn(`No ${type} found in 15km radius.`);
+        }
       }
-    } catch (err) { console.error("POI Error:", err); }
+    } catch (err) { 
+      console.error("POI Error:", err); 
+    } finally {
+      setIsPoiLoading(false);
+    }
   };
 
   const calculateRoute = async (dest) => {
@@ -398,20 +427,34 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
         {userLocation ? 'REAL-TIME GPS ACTIVE' : 'WAITING FOR GPS'}
       </div>
 
-      {nearbyPOIs && nearbyPOIs.length > 0 && (
+      {(isPoiLoading || (nearbyPOIs && nearbyPOIs.length > 0) || (poiType && !isPoiLoading && nearbyPOIs.length === 0)) && (
         <div className="absolute bottom-4 right-4 z-[780] max-h-[300px] overflow-y-auto w-[250px] bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-gray-200 animate-fade-in p-3 hidden sm:block">
-          <p className="text-[10px] font-black uppercase tracking-widest text-center pb-2 text-blue-600 border-b border-gray-100">Nearest {poiType}</p>
-          <div className="flex flex-col gap-2 mt-2">
-            {nearbyPOIs.map((poi, idx) => (
-              <div key={idx} className="p-3 bg-gray-50 rounded-xl hover:bg-blue-50 transition border border-transparent hover:border-blue-200 cursor-pointer shadow-sm" onClick={() => calculateRoute(poi.pos)}>
-                <h4 className="font-bold text-sm truncate text-gray-800">{poi.name}</h4>
-                <div className="flex justify-between items-center mt-2">
-                  <span className="text-[10px] font-bold text-gray-500 bg-white px-2 py-0.5 rounded-md border">{poi.distance} km</span>
-                  <span className="text-[10px] font-black text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md transition shadow-sm">GO</span>
+          <p className="text-[10px] font-black uppercase tracking-widest text-center pb-2 text-blue-600 border-b border-gray-100">
+            {isPoiLoading ? 'Scanning Grid...' : `Nearest ${poiType}`}
+          </p>
+          
+          {isPoiLoading ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-2">
+              <Loader2 className="animate-spin text-blue-600" size={32} />
+              <p className="text-[10px] font-bold text-gray-400">CONNECTING TO SATELLITE...</p>
+            </div>
+          ) : nearbyPOIs.length > 0 ? (
+            <div className="flex flex-col gap-2 mt-2">
+              {nearbyPOIs.map((poi, idx) => (
+                <div key={idx} className="p-3 bg-gray-50 rounded-xl hover:bg-blue-50 transition border border-transparent hover:border-blue-200 cursor-pointer shadow-sm" onClick={() => calculateRoute(poi.pos)}>
+                  <h4 className="font-bold text-sm truncate text-gray-800">{poi.name}</h4>
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-[10px] font-bold text-gray-500 bg-white px-2 py-0.5 rounded-md border">{poi.distance} km</span>
+                    <span className="text-[10px] font-black text-white bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded-md transition shadow-sm">GO</span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-xs font-bold text-gray-400">No {poiType} found within 15km tactical radius.</p>
+            </div>
+          )}
         </div>
       )}
     </div>
