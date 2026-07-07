@@ -89,6 +89,22 @@ export const verifyStoredOtp = async (email, inputCode) => {
 export const registerNewUser = async (email, password) => {
   try {
     const { data, error } = await supabase.auth.signUp({ email, password });
+
+    // Handle "User already registered" — sign in instead of failing
+    if (error && error.message?.includes('User already registered')) {
+      console.warn('User already registered, attempting sign-in instead…');
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (signInError) throw new Error(
+        signInError.message?.includes('Invalid login credentials')
+          ? 'An account with this email already exists but the password does not match. Please use Sign In instead.'
+          : signInError.message
+      );
+      return { data: signInData, error: null };
+    }
+
     if (error) throw error;
 
     // If Supabase returned a session → user is active immediately ✅
