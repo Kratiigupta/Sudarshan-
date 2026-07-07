@@ -137,23 +137,10 @@ const LiveMap = ({ onAlert, viewMode = 'tourist', userLocation, globalAlerts, po
     }
     
     try {
-      const overpassServers = [
-        'https://lz4.overpass-api.de/api/interpreter',
-        'https://overpass-api.de/api/interpreter',
-        'https://overpass.kumi.systems/api/interpreter'
-      ];
-      
+      const res = await fetch(`/api/overpass?data=${encodeURIComponent(query)}`);
       let data = null;
-      for (const server of overpassServers) {
-        try {
-          const res = await fetch(`${server}?data=${encodeURIComponent(query)}`, { timeout: 10000 });
-          if (res.ok) {
-            data = await res.json();
-            break;
-          }
-        } catch (e) {
-          console.warn(`Server ${server} failed or timed out. Trying next...`);
-        }
+      if (res.ok) {
+        data = await res.json();
       }
       
       if (!data) throw new Error("All mapping servers are currently unreachable.");
